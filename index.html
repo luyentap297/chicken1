@@ -1,0 +1,3067 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bắn Gà Vũ Trụ - Chicken Invaders HTML5</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            box-sizing: border-box;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #030712;
+            font-family: 'Quicksand', sans-serif;
+            touch-action: none;
+        }
+        .font-sci {
+            font-family: 'Orbitron', sans-serif;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.78);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+        }
+        .btn-arcade {
+            background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+            box-shadow: 0 4px 15px rgba(234, 88, 12, 0.5), inset 0 2px 2px rgba(255, 255, 255, 0.4);
+            transition: all 0.15s ease;
+        }
+        .btn-arcade:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 22px rgba(234, 88, 12, 0.75), inset 0 2px 2px rgba(255, 255, 255, 0.6);
+        }
+        .btn-arcade:active {
+            transform: translateY(1px) scale(0.98);
+        }
+        @keyframes pulseGlow {
+            0%, 100% { filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.8)); }
+            50% { filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.95)); }
+        }
+        .title-glow {
+            animation: pulseGlow 2.5s infinite;
+        }
+    </style>
+</head>
+<body class="relative text-white select-none">
+
+    <!-- Canvas chính của Game -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- HUD Trên cùng -->
+    <div id="hud" class="fixed top-0 left-0 right-0 p-2 sm:p-3 pointer-events-none flex flex-wrap justify-between items-start gap-2 z-20 hidden">
+        <!-- Cụm thông tin trái: Điểm, Mạng, Vũ khí, Nhiệt độ -->
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3 pointer-events-auto">
+            <div class="glass-panel px-3 py-1.5 rounded-xl flex items-center gap-3">
+                <div>
+                    <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Màn Chơi</div>
+                    <div id="waveHudDisplay" class="font-sci text-sm sm:text-lg text-cyan-400 font-extrabold">MÀN 1</div>
+                </div>
+                <div class="h-7 w-[1px] bg-slate-700"></div>
+                <div>
+                    <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Điểm Số</div>
+                    <div id="scoreDisplay" class="font-sci text-base sm:text-xl text-amber-400 font-extrabold">0</div>
+                </div>
+                <div class="h-7 w-[1px] bg-slate-700"></div>
+                <div>
+                    <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Mạng</div>
+                    <div id="livesDisplay" class="text-sm sm:text-base font-bold flex items-center gap-1 text-rose-400">
+                        ❤️❤️❤️
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cấp vũ khí & Thanh nhiệt độ -->
+            <div class="glass-panel px-3 py-1.5 rounded-xl flex items-center gap-3">
+                <div>
+                    <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Vũ Khí (Max 12)</div>
+                    <div id="weaponDisplay" class="font-sci text-xs sm:text-sm font-bold text-red-400">ION CẤP 1</div>
+                </div>
+                <div class="w-24 sm:w-32">
+                    <div class="flex justify-between text-[10px] font-bold mb-1">
+                        <span id="heatLabel" class="text-cyan-300">NHIỆT ĐỘ</span>
+                        <span id="heatPercent" class="text-slate-300">0%</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-600">
+                        <div id="heatBar" class="h-full bg-gradient-to-r from-cyan-400 via-amber-400 to-rose-600 transition-all duration-75" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Đùi gà & Tên lửa -->
+            <div class="glass-panel px-3 py-1.5 rounded-xl flex items-center gap-3">
+                <div class="flex items-center gap-1.5" title="Đủ 50 đùi gà nhận 1 Tên lửa">
+                    <span class="text-lg">🍗</span>
+                    <div>
+                        <div class="text-[10px] text-slate-400 uppercase font-bold">Đùi Gà</div>
+                        <div class="font-sci text-xs sm:text-sm font-bold text-orange-300"><span id="drumstickDisplay">0</span>/50</div>
+                    </div>
+                </div>
+                <div class="h-7 w-[1px] bg-slate-700"></div>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-lg">🚀</span>
+                    <div>
+                        <div class="text-[10px] text-slate-400 uppercase font-bold">Tên Lửa [B]</div>
+                        <div id="missileDisplay" class="font-sci text-xs sm:text-sm font-bold text-emerald-400">3</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cụm nút điều khiển phải -->
+        <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 pointer-events-auto">
+            <select id="hudWaveJump" class="glass-panel px-2 py-1.5 rounded-xl text-xs font-bold text-fuchsia-300 border border-fuchsia-500/40 bg-slate-900/90 cursor-pointer outline-none" title="Nhảy nhanh tới màn cao cấp">
+                <option value="">⚡ Nhảy Màn...</option>
+                <option value="1">Màn 1: Đội Hình Cổ Điển</option>
+                <option value="5">Màn 5: [BOSS] Đại Đế Gà</option>
+                <option value="6">Màn 6: Xoáy Nước Ngân Hà (Ninja)</option>
+                <option value="7">Màn 7: Vòng Xoay Tử Thần (Khiên)</option>
+                <option value="8">Màn 8: Mưa Thiên Thạch Lửa & Bão Từ</option>
+                <option value="9">Màn 9: Phục Kích Cổng Không Gian</option>
+                <option value="10">Màn 10: [BOSS] Đĩa Bay Gà Mẹ UFO</option>
+                <option value="12">Màn 12: Kho Báu Gà Vàng Vũ Trụ</option>
+                <option value="14">Màn 14: Trứng Vũ Trụ Khổng Lồ</option>
+                <option value="15">Màn 15: [BOSS] Gà Robot Hủy Diệt MK-II</option>
+                <option value="20">Màn 20: [BOSS] Trứng Vũ Trụ Hắc Ám</option>
+            </select>
+            <button id="btnAutoFire" class="glass-panel px-2.5 py-1.5 rounded-xl text-xs font-bold border border-emerald-500/40 text-emerald-300 hover:bg-slate-800/80 transition flex items-center gap-1">
+                <span>🎯 Tự Bắn:</span> <span id="autoFireStatus">BẬT</span>
+            </button>
+            <button id="btnSound" class="glass-panel px-2.5 py-1.5 rounded-xl text-xs font-bold text-sky-300 hover:bg-slate-800/80 transition">
+                🔊 Âm Thanh
+            </button>
+            <button id="btnPause" class="glass-panel px-2.5 py-1.5 rounded-xl text-xs font-bold text-amber-300 hover:bg-slate-800/80 transition">
+                ⏸️ Tạm Dừng
+            </button>
+        </div>
+    </div>
+
+    <!-- Thanh máu Boss khi đấu Trùm -->
+    <div id="bossHud" class="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 w-11/12 max-w-xl z-20 pointer-events-none hidden">
+        <div class="glass-panel px-4 py-2 rounded-2xl border border-rose-500/50">
+            <div class="flex justify-between items-center mb-1">
+                <span id="bossName" class="font-sci text-xs sm:text-sm font-extrabold text-rose-400 tracking-wider">🐔 TRÙM GÀ VŨ TRỤ</span>
+                <span id="bossHpPercent" class="font-sci text-xs text-rose-300">100%</span>
+            </div>
+            <div class="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-rose-500/40">
+                <div id="bossHpBar" class="h-full bg-gradient-to-r from-rose-600 via-red-500 to-amber-500 transition-all duration-100" style="width: 100%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nút phóng Tên Lửa Hủy Diệt (Hữu ích cho Mobile & Click nhanh) -->
+    <button id="btnMissileTouch" class="fixed bottom-5 right-5 z-20 hidden pointer-events-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-rose-600 to-amber-600 border-2 border-amber-300 shadow-lg shadow-rose-600/50 flex flex-col items-center justify-center active:scale-90 transition">
+        <span class="text-2xl sm:text-3xl">🚀</span>
+        <span class="text-[10px] font-extrabold uppercase tracking-tighter text-white">BOMB (<span id="touchMissileCount">3</span>)</span>
+    </button>
+
+    <!-- Màn hình Bắt Đầu (Start Screen) -->
+    <div id="startScreen" class="fixed inset-0 z-30 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+        <div class="glass-panel max-w-2xl w-full p-5 sm:p-7 rounded-3xl text-center border border-amber-500/30 relative overflow-hidden my-auto">
+            <div class="text-4xl sm:text-5xl mb-1 title-glow">🐔🚀🌌🤖</div>
+            <h1 class="font-sci text-2xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-rose-500 mb-1">
+                CHICKEN INVADERS: SIÊU CẤP
+            </h1>
+            <p class="text-amber-200/90 font-bold text-xs sm:text-sm mb-4">PHIÊN BẢN ĐẠI CHIẾN CÁC MÀN CAO CẤP & TRÙM TỐI THƯỢNG</p>
+
+            <!-- Hướng dẫn nhanh -->
+            <div class="bg-slate-900/90 border border-slate-700/80 rounded-2xl p-3.5 text-left text-xs sm:text-sm space-y-2 mb-4">
+                <div class="flex items-start gap-2">
+                    <span class="text-amber-400 font-bold shrink-0">🕹️ Điều khiển:</span>
+                    <span class="text-slate-300">Di chuyển bằng <b>Chuột</b>, phím <b>WASD / Mũi tên</b> hoặc <b>Chạm vuốt</b>. Bấm <b>B / Chuột phải</b> phóng Tên lửa.</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-cyan-400 font-bold shrink-0">🔫 Vũ khí Cấp 12 + Drone:</span>
+                    <span class="text-slate-300">3 Hệ <b class="text-red-400">Ion Đỏ</b>, <b class="text-yellow-300">Laser Vàng</b>, <b class="text-purple-400">Plasma Tím</b> nâng tối đa tới <b>Cấp 12</b>! Đạt từ <b>Cấp 8+</b> tự động kích hoạt <b>2 Drone Hộ Vệ</b> bắn trợ chiến!</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-fuchsia-400 font-bold shrink-0">👾 Màn Cao Cấp Mới:</span>
+                    <span class="text-slate-300">Chạm trán <b>Gà Giáp Sắt Cyborg</b>, <b>Gà Ninja Phi Tiêu</b>, <b>Gà Khiên Từ Trường</b>, <b>Gà Cảm Tử Đeo Bom</b>, <b>Bão Điện Từ</b>, <b>Cổng Không Gian</b> & <b>4 Đại Boss</b>!</span>
+                </div>
+            </div>
+
+            <!-- Chọn chế độ / Màn xuất phát -->
+            <div class="bg-slate-900/95 border border-fuchsia-500/40 rounded-2xl p-3.5 mb-4 text-left">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                    <label for="startWaveSelect" class="font-sci text-xs sm:text-sm font-bold text-fuchsia-300">
+                        ⚡ CHỌN CHIẾN DỊCH / MÀN XUẤT PHÁT:
+                    </label>
+                    <span class="text-[11px] text-amber-300 font-semibold">*Chọn màn cao cấp sẽ được tặng sẵn Vũ khí Cấp 8 + Drone!</span>
+                </div>
+                <select id="startWaveSelect" class="w-full bg-slate-800 border border-slate-600 text-white text-xs sm:text-sm font-bold rounded-xl px-3 py-2.5 outline-none focus:border-amber-400 cursor-pointer">
+                    <option value="1">🌟 Chiến Dịch Chuẩn - Bắt đầu từ Màn 1 (Cấp Vũ Khí 1)</option>
+                    <option value="6" selected>🔥 Chiến Dịch Cao Cấp - Màn 6: Xoáy Nước Ngân Hà & Gà Ninja (Vũ Khí Cấp 8)</option>
+                    <option value="7">🛡️ Màn Cao Cấp 7: Vòng Xoay Tử Thần & Gà Khiên Từ Trường (Vũ Khí Cấp 8)</option>
+                    <option value="8">☄️ Màn Cao Cấp 8: Mưa Thiên Thạch Lửa & Bão Điện Từ (Vũ Khí Cấp 8)</option>
+                    <option value="9">🌀 Màn Cao Cấp 9: Phục Kích Cổng Không Gian 4 Hướng (Vũ Khí Cấp 9)</option>
+                    <option value="10">🛸 Đấu Trùm Màn 10: Đĩa Bay Gà Mẹ UFO (Vũ Khí Cấp 9)</option>
+                    <option value="12">💰 Màn Đặc Biệt 12: Kho Báu Gà Vàng Vũ Trụ (Vũ Khí Cấp 10)</option>
+                    <option value="14">🥚 Màn Cao Cấp 14: Pháo Đài Trứng Vũ Trụ Khổng Lồ (Vũ Khí Cấp 10)</option>
+                    <option value="15">🤖 Đấu Trùm Màn 15: Gà Robot Hủy Diệt MK-II (Vũ Khí Cấp 11)</option>
+                    <option value="20">🌑 Đấu Trùm Cuối Màn 20: Trứng Vũ Trụ Hắc Ám Yolk-Star (Vũ Khí MAX Cấp 12)</option>
+                </select>
+            </div>
+
+            <div class="flex items-center justify-center gap-4 mb-4 text-xs sm:text-sm">
+                <div class="bg-slate-800/90 px-4 py-1.5 rounded-xl border border-amber-500/30">
+                    🏆 Điểm Cao Nhất: <span id="highScoreStart" class="font-sci text-amber-400 font-bold">0</span>
+                </div>
+            </div>
+
+            <button id="btnStartGame" class="btn-arcade w-full py-3.5 rounded-2xl font-sci text-base sm:text-xl font-black text-white tracking-wider uppercase cursor-pointer">
+                🚀 XUẤT KÍCH CHIẾN ĐẤU
+            </button>
+        </div>
+    </div>
+
+    <!-- Thanh máu Boss khi đấu Trùm -->
+    <div id="bossHud" class="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 w-11/12 max-w-xl z-20 pointer-events-none hidden">
+        <div class="glass-panel px-4 py-2 rounded-2xl border border-rose-500/50">
+            <div class="flex justify-between items-center mb-1">
+                <span id="bossName" class="font-sci text-xs sm:text-sm font-extrabold text-rose-400 tracking-wider">🐔 TRÙM GÀ VŨ TRỤ</span>
+                <span id="bossHpPercent" class="font-sci text-xs text-rose-300">100%</span>
+            </div>
+            <div class="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-rose-500/40">
+                <div id="bossHpBar" class="h-full bg-gradient-to-r from-rose-600 via-red-500 to-amber-500 transition-all duration-100" style="width: 100%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nút phóng Tên Lửa Hủy Diệt (Hữu ích cho Mobile & Click nhanh) -->
+    <button id="btnMissileTouch" class="fixed bottom-5 right-5 z-20 hidden pointer-events-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-rose-600 to-amber-600 border-2 border-amber-300 shadow-lg shadow-rose-600/50 flex flex-col items-center justify-center active:scale-90 transition">
+        <span class="text-2xl sm:text-3xl">🚀</span>
+        <span class="text-[10px] font-extrabold uppercase tracking-tighter text-white">BOMB (<span id="touchMissileCount">3</span>)</span>
+    </button>
+
+    <!-- Màn hình Bắt Đầu (Start Screen) -->
+    <div id="startScreen" class="fixed inset-0 z-30 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="glass-panel max-w-xl w-full p-6 sm:p-8 rounded-3xl text-center border border-amber-500/30 relative overflow-hidden">
+            <div class="text-5xl sm:text-6xl mb-2 title-glow">🐔🚀🌌</div>
+            <h1 class="font-sci text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-rose-500 mb-2">
+                CHICKEN INVADERS
+            </h1>
+            <p class="text-amber-200/90 font-bold text-sm sm:text-base mb-6">CHIẾN DỊCH BẮN GÀ VŨ TRỤ ĐẠI CHIẾN</p>
+
+            <!-- Hướng dẫn nhanh -->
+            <div class="bg-slate-900/90 border border-slate-700/80 rounded-2xl p-4 text-left text-xs sm:text-sm space-y-2.5 mb-6">
+                <div class="flex items-start gap-2">
+                    <span class="text-amber-400 font-bold">🕹️ Điều khiển:</span>
+                    <span class="text-slate-300">Di chuyển bằng <b>Chuột</b>, phím <b>WASD / Mũi tên</b> hoặc <b>Chạm vuốt</b> trên màn hình cảm ứng.</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-cyan-400 font-bold">🔫 Vũ khí (3 Hệ):</span>
+                    <span class="text-slate-300">Nhặt hộp quà <b class="text-red-400">Đỏ (Ion Tỏa)</b>, <b class="text-yellow-300">Vàng (Laser Nhanh)</b>, <b class="text-purple-400">Tím (Plasma Xuyên/Giật)</b> và <b class="text-amber-300">⚡ Tia Chớp</b> để nâng tới Cấp 8!</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-rose-400 font-bold">🚀 Tên lửa & Nhiệt:</span>
+                    <span class="text-slate-300">Gom đủ <b>50 Đùi Gà 🍗</b> nhận 1 Tên lửa hủy diệt (Bấm phím <b>B</b>, <b>Chuột phải</b> hoặc nút <b>BOMB</b>). Chú ý thanh nhiệt độ súng!</span>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-center gap-4 mb-6 text-sm">
+                <div class="bg-slate-800/90 px-4 py-2 rounded-xl border border-amber-500/30">
+                    🏆 Điểm Cao Nhất: <span id="highScoreStart" class="font-sci text-amber-400 font-bold">0</span>
+                </div>
+            </div>
+
+            <button id="btnStartGame" class="btn-arcade w-full py-4 rounded-2xl font-sci text-lg sm:text-xl font-black text-white tracking-wider uppercase cursor-pointer">
+                🚀 XUẤT KÍCH NGAY
+            </button>
+        </div>
+    </div>
+
+    <!-- Màn hình Tạm Dừng (Pause Screen) -->
+    <div id="pauseScreen" class="fixed inset-0 z-30 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm hidden">
+        <div class="glass-panel max-w-md w-full p-6 rounded-3xl text-center border border-sky-500/30">
+            <h2 class="font-sci text-2xl sm:text-3xl font-black text-amber-400 mb-2">⏸️ TẠM DỪNG</h2>
+            <p class="text-slate-300 text-sm mb-6">Cuộc xâm lăng của binh đoàn gà đang chờ bạn xử lý!</p>
+            <div class="space-y-3">
+                <button id="btnResume" class="btn-arcade w-full py-3 rounded-xl font-sci font-bold text-white">
+                    ▶️ TIẾP TỤC CHIẾN ĐẤU
+                </button>
+                <button id="btnRestartPause" class="w-full py-3 rounded-xl font-sci font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 transition">
+                    🔄 CHƠI LẠI TỪ ĐẦU
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Màn hình Kết Thúc (Game Over Screen) -->
+    <div id="gameOverScreen" class="fixed inset-0 z-30 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md hidden">
+        <div class="glass-panel max-w-md w-full p-6 sm:p-8 rounded-3xl text-center border border-rose-500/40">
+            <div class="text-5xl mb-2">🍗💥🛸</div>
+            <h2 class="font-sci text-3xl font-black text-rose-500 mb-1">THẤT THỦ!</h2>
+            <p class="text-slate-300 text-sm mb-6">Phi thuyền của bạn đã bị binh đoàn gà áp đảo.</p>
+
+            <div class="bg-slate-900/90 rounded-2xl p-4 mb-6 space-y-2 border border-slate-800">
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Màn đạt được:</span>
+                    <span id="finalWave" class="font-sci font-bold text-cyan-400">Wave 1</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Điểm trận này:</span>
+                    <span id="finalScore" class="font-sci font-bold text-amber-400 text-lg">0</span>
+                </div>
+                <div class="flex justify-between text-sm border-t border-slate-800 pt-2">
+                    <span class="text-slate-400">Kỷ lục cao nhất:</span>
+                    <span id="finalHighScore" class="font-sci font-bold text-emerald-400 text-lg">0</span>
+                </div>
+            </div>
+
+            <button id="btnPlayAgain" class="btn-arcade w-full py-4 rounded-2xl font-sci text-lg font-black text-white uppercase">
+                🔥 PHỤC THÙ NGAY
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* ============================================================================
+         * 1. HỆ THỐNG ÂM THANH TỔNG HỢP (WEB AUDIO API SYNTHESIZER - KHÔNG FILE NGOÀI)
+         * ============================================================================ */
+        class SoundSystem {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            toggle() {
+                this.enabled = !this.enabled;
+                return this.enabled;
+            }
+
+            // Tiếng bắn súng theo 3 hệ: 0 = Đỏ (Ion), 1 = Vàng (Laser), 2 = Tím (Plasma)
+            playShoot(type) {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                if (type === 0) {
+                    // Ion Đỏ: Pew pew cổ điển
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(620, now);
+                    osc.frequency.exponentialRampToValueAtTime(140, now + 0.09);
+                    gain.gain.setValueAtTime(0.11, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.09);
+                    osc.start(now);
+                    osc.stop(now + 0.09);
+                } else if (type === 1) {
+                    // Laser Vàng: Tia sắc tốc độ cao
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(1150, now);
+                    osc.frequency.exponentialRampToValueAtTime(320, now + 0.06);
+                    gain.gain.setValueAtTime(0.09, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.06);
+                    osc.start(now);
+                    osc.stop(now + 0.06);
+                } else {
+                    // Plasma Tím: Xung điện trầm
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(420, now);
+                    osc.frequency.linearRampToValueAtTime(780, now + 0.04);
+                    osc.frequency.exponentialRampToValueAtTime(120, now + 0.12);
+                    gain.gain.setValueAtTime(0.14, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+                    osc.start(now);
+                    osc.stop(now + 0.12);
+                }
+            }
+
+            // Tiếng gà kêu "cục tác" khi trúng đạn hoặc bị tiêu diệt
+            playChickenCluck(isKill = false) {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.type = 'triangle';
+                if (!isKill) {
+                    // Cục nhẹ
+                    osc.frequency.setValueAtTime(520, now);
+                    osc.frequency.setValueAtTime(760, now + 0.03);
+                    osc.frequency.exponentialRampToValueAtTime(380, now + 0.09);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.09);
+                    osc.start(now);
+                    osc.stop(now + 0.09);
+                } else {
+                    // Cục tác lớn khi gà nổ
+                    osc.frequency.setValueAtTime(450, now);
+                    osc.frequency.linearRampToValueAtTime(920, now + 0.06);
+                    osc.frequency.linearRampToValueAtTime(600, now + 0.12);
+                    osc.frequency.exponentialRampToValueAtTime(240, now + 0.24);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.24);
+                    osc.start(now);
+                    osc.stop(now + 0.24);
+                }
+            }
+
+            // Tiếng nhặt đùi gà hoặc nâng cấp vũ khí
+            playPowerUp(isMajor = false) {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.type = 'sine';
+                if (isMajor) {
+                    // Nâng cấp vũ khí / Hộp quà
+                    const notes = [523.25, 659.25, 783.99, 1046.5];
+                    notes.forEach((freq, idx) => {
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.055);
+                    });
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.26);
+                    osc.start(now);
+                    osc.stop(now + 0.26);
+                } else {
+                    // Ăn đùi gà "bloop"
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+                    gain.gain.setValueAtTime(0.13, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                }
+            }
+
+            // Tiếng nổ trầm ấm (Noise + Low Osc)
+            playExplosion(scale = 1) {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const duration = 0.35 * scale;
+                const bufferSize = this.ctx.sampleRate * duration;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(420, now);
+                filter.frequency.exponentialRampToValueAtTime(60, now + duration);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.32 * Math.min(scale, 1.5), now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                noise.start(now);
+                noise.stop(now + duration);
+            }
+
+            // Còi báo động Boss xuất hiện hoặc Quá nhiệt
+            playSiren(isBoss = true) {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.type = 'sawtooth';
+                if (isBoss) {
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.linearRampToValueAtTime(440, now + 0.35);
+                    osc.frequency.linearRampToValueAtTime(220, now + 0.7);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.72);
+                    osc.start(now);
+                    osc.stop(now + 0.72);
+                } else {
+                    // Quá nhiệt súng
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.linearRampToValueAtTime(150, now + 0.25);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                }
+            }
+
+            // Tiếng khiên năng lượng hoặc dịch chuyển Ninja
+            playWarpOrShield(isTeleport = true) {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.type = isTeleport ? 'sine' : 'square';
+                if (isTeleport) {
+                    osc.frequency.setValueAtTime(880, now);
+                    osc.frequency.exponentialRampToValueAtTime(240, now + 0.11);
+                } else {
+                    osc.frequency.setValueAtTime(260, now);
+                    osc.frequency.linearRampToValueAtTime(520, now + 0.07);
+                }
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.11);
+                osc.start(now);
+                osc.stop(now + 0.11);
+            }
+        }
+
+        const sfx = new SoundSystem();
+
+        /* ============================================================================
+         * 2. KHỞI TẠO CANVAS VÀ CÁC BIẾN TRẠNG THÁI TOÀN CỤC
+         * ============================================================================ */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let W = window.innerWidth;
+        let H = window.innerHeight;
+        function resizeCanvas() {
+            W = window.innerWidth;
+            H = window.innerHeight;
+            canvas.width = W;
+            canvas.height = H;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const WEAPON_NAMES = [
+            { name: 'ĐẠN ĐỎ ION', color: '#f87171' },
+            { name: 'LASER VÀNG', color: '#facc15' },
+            { name: 'PLASMA TÍM', color: '#c084fc' }
+        ];
+
+        // Quản lý trạng thái Game
+        const game = {
+            state: 'START', // START, PLAYING, PAUSED, GAMEOVER
+            score: 0,
+            highScore: parseInt(localStorage.getItem('chicken_invaders_highscore') || '0', 10),
+            wave: 1,
+            waveTitle: '',
+            waveSubTitle: '',
+            bannerTimer: 0,
+            autoFire: true,
+            screenShake: 0,
+            flashAlpha: 0,
+            time: 0
+        };
+
+        // Người chơi (Phi thuyền)
+        const player = {
+            x: W / 2,
+            y: H - 110,
+            targetX: W / 2,
+            targetY: H - 110,
+            usePointer: false,
+            radius: 22,
+            speed: 460,
+            lives: 3,
+            weaponType: 0, // 0: Ion Đỏ, 1: Laser Vàng, 2: Plasma Tím
+            weaponLevel: 1, // 1 -> 12 (Max Overdrive)
+            drumsticks: 0,
+            missiles: 3,
+            heat: 0,
+            maxHeat: 100,
+            overheated: false,
+            fireCooldown: 0,
+            invulnerableTimer: 0,
+            recoil: 0
+        };
+
+        // Danh sách đối tượng trong game
+        let stars = [];
+        let bullets = [];
+        let chickens = [];
+        let asteroids = [];
+        let hazards = []; // Bão điện từ Solar Flare & Cổng dịch chuyển Portals
+        let boss = null;
+        let eggs = [];
+        let powerups = [];
+        let particles = [];
+        let floatingTexts = [];
+        let activeMissile = null;
+
+        // Điều khiển Bàn phím & Chuột & Cảm ứng
+        const keys = {};
+        let isPointerDown = false;
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+                player.usePointer = false;
+            }
+            if (e.code === 'KeyB' && game.state === 'PLAYING') {
+                launchMissile();
+            }
+            if (e.code === 'KeyP' || e.code === 'Escape') {
+                if (game.state === 'PLAYING') togglePause();
+                else if (game.state === 'PAUSED') togglePause();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (game.state !== 'PLAYING') return;
+            player.usePointer = true;
+            player.targetX = e.clientX;
+            player.targetY = e.clientY;
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            sfx.init();
+            if (game.state !== 'PLAYING') return;
+            if (e.button === 2) {
+                launchMissile();
+            } else {
+                isPointerDown = true;
+                player.usePointer = true;
+                player.targetX = e.clientX;
+                player.targetY = e.clientY;
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isPointerDown = false;
+        });
+
+        window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // Hỗ trợ màn hình cảm ứng (Touch drag mượt)
+        canvas.addEventListener('touchstart', (e) => {
+            sfx.init();
+            if (game.state !== 'PLAYING') return;
+            isPointerDown = true;
+            player.usePointer = true;
+            const touch = e.touches[0];
+            player.targetX = touch.clientX;
+            player.targetY = touch.clientY - 45; // Để ngón tay không che khuất tàu
+        }, { passive: true });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (game.state !== 'PLAYING') return;
+            const touch = e.touches[0];
+            player.usePointer = true;
+            player.targetX = touch.clientX;
+            player.targetY = touch.clientY - 45;
+        }, { passive: true });
+
+        window.addEventListener('touchend', () => {
+            isPointerDown = false;
+        });
+
+        /* ============================================================================
+         * 4. HỆ THỐNG VŨ KHÍ (3 HỆ ĐẠN CHUẨN CHICKEN INVADERS, CẤP 1 -> 12 + DRONES) & TÊN LỬA
+         * ============================================================================ */
+        function fireWeapon() {
+            if (player.overheated) return;
+
+            const lvl = player.weaponLevel;
+            const x = player.x;
+            const y = player.y - 18;
+
+            sfx.playShoot(player.weaponType);
+            player.recoil = Math.min(7, 3 + lvl * 0.3);
+
+            if (player.weaponType === 0) {
+                // ĐẠN ĐỎ (ION BLASTER): Bắn chùm tia tỏa góc rộng lên tới 9 luồng ở Cấp 12
+                player.fireCooldown = Math.max(0.085, 0.165 - lvl * 0.006);
+                player.heat += Math.max(1.6, 2.2 - lvl * 0.04);
+
+                const streamCount = Math.min(2 + Math.floor(lvl * 0.65), 9);
+                const spreadAngle = 0.07 + streamCount * 0.036;
+                for (let i = 0; i < streamCount; i++) {
+                    const ratio = streamCount === 1 ? 0 : (i / (streamCount - 1)) - 0.5;
+                    const angle = ratio * spreadAngle * 2;
+                    const speed = 780 + lvl * 12;
+                    bullets.push({
+                        x: x + ratio * 18,
+                        y,
+                        vx: Math.sin(angle) * speed,
+                        vy: -Math.cos(angle) * speed,
+                        type: 0,
+                        damage: 14 + lvl * 2.8,
+                        radius: 5 + (lvl >= 6 ? 1.5 : 0) + (lvl >= 10 ? 1.5 : 0),
+                        pierce: lvl >= 11 ? 2 : 1
+                    });
+                }
+                // Cấp 7+ có thêm đạn trung tâm Hạt Nhân Đỏ
+                if (lvl >= 7) {
+                    bullets.push({
+                        x,
+                        y: y - 8,
+                        vx: 0,
+                        vy: -880,
+                        type: 0,
+                        damage: 26 + lvl * 2,
+                        radius: 8,
+                        pierce: 2
+                    });
+                }
+
+            } else if (player.weaponType === 1) {
+                // ĐẠN VÀNG (HYPER LASER): Cực nhanh, tập trung thẳng đứng & tia chéo phụ
+                player.fireCooldown = Math.max(0.06, 0.115 - lvl * 0.0045);
+                player.heat += Math.max(1.4, 1.85 - lvl * 0.03);
+
+                const parallel = Math.min(1 + Math.floor((lvl + 1) / 2), 6);
+                const spacing = 10;
+                for (let i = 0; i < parallel; i++) {
+                    const offset = (i - (parallel - 1) / 2) * spacing;
+                    bullets.push({
+                        x: x + offset,
+                        y,
+                        vx: 0,
+                        vy: -1120,
+                        type: 1,
+                        damage: 13 + lvl * 2.5,
+                        radius: 4 + (lvl >= 9 ? 1.5 : 0),
+                        pierce: lvl >= 10 ? 2 : 1
+                    });
+                }
+                if (lvl >= 5) {
+                    const diagSpeed = 1040;
+                    const angles = lvl >= 9 ? [-0.32, -0.16, 0.16, 0.32] : [-0.22, 0.22];
+                    angles.forEach(ang => {
+                        bullets.push({
+                            x,
+                            y,
+                            vx: Math.sin(ang) * diagSpeed,
+                            vy: -Math.cos(ang) * diagSpeed,
+                            type: 1,
+                            damage: 14 + lvl * 1.8,
+                            radius: 4,
+                            pierce: 1
+                        });
+                    });
+                }
+
+            } else {
+                // ĐẠN TÍM (PLASMA TESLA): Cầu năng lượng giật điện & xuyên thấu cực mạnh
+                player.fireCooldown = Math.max(0.12, 0.23 - lvl * 0.008);
+                player.heat += Math.max(2.2, 3.0 - lvl * 0.05);
+
+                const orbCount = lvl < 3 ? 1 : (lvl < 6 ? 2 : (lvl < 10 ? 3 : 5));
+                for (let i = 0; i < orbCount; i++) {
+                    const ratio = orbCount === 1 ? 0 : (i / (orbCount - 1)) - 0.5;
+                    const angle = ratio * 0.32;
+                    const speed = 680 + lvl * 10;
+                    bullets.push({
+                        x: x + ratio * 22,
+                        y,
+                        vx: Math.sin(angle) * speed,
+                        vy: -Math.cos(angle) * speed,
+                        type: 2,
+                        damage: 24 + lvl * 5.0,
+                        radius: 9 + Math.floor(lvl / 2),
+                        pierce: 2 + Math.floor(lvl / 2.5),
+                        hitSet: new Set()
+                    });
+                }
+            }
+
+            // DRONE HỘ VỆ TỰ ĐỘNG BẮN TRỢ CHIẾN KHI ĐẠT CẤP 8+
+            if (lvl >= 8) {
+                const droneOffset = 44;
+                const d1x = player.x - droneOffset + Math.cos(game.time * 5) * 4;
+                const d2x = player.x + droneOffset - Math.cos(game.time * 5) * 4;
+                const dy = player.y + 4;
+                const droneDmg = 12 + (lvl - 7) * 5;
+                [d1x, d2x].forEach(dx => {
+                    bullets.push({
+                        x: dx,
+                        y: dy - 10,
+                        vx: 0,
+                        vy: -920,
+                        type: player.weaponType,
+                        damage: droneDmg,
+                        radius: 4.5,
+                        pierce: 1
+                    });
+                });
+            }
+
+            if (player.heat >= player.maxHeat) {
+                player.heat = player.maxHeat;
+                player.overheated = true;
+                sfx.playSiren(false);
+                addFloatingText('QUÁ NHIỆT SÚNG!', player.x, player.y - 35, '#fb7185');
+            }
+            updateHUD();
+        }
+
+        // Phóng Tên Lửa Hủy Diệt Toàn Màn Hình
+        function launchMissile() {
+            if (player.missiles <= 0 || activeMissile || game.state !== 'PLAYING') return;
+            player.missiles--;
+            sfx.playPowerUp(true);
+            activeMissile = {
+                x: player.x,
+                y: player.y,
+                targetX: W / 2,
+                targetY: H * 0.38,
+                progress: 0
+            };
+            updateHUD();
+        }
+
+        function detonateMissile() {
+            sfx.playExplosion(1.8);
+            game.screenShake = 24;
+            game.flashAlpha = 0.85;
+
+            // Tiêu diệt toàn bộ trứng địch trên màn hình
+            eggs = [];
+
+            // Sát thương hủy diệt lên toàn bộ gà
+            for (let i = chickens.length - 1; i >= 0; i--) {
+                const c = chickens[i];
+                spawnFeathers(c.x, c.y, 10, c.color);
+                if (c.shieldHp > 0) c.shieldHp = 0;
+                damageChicken(c, 420);
+            }
+
+            // Phá hủy thiên thạch
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                const a = asteroids[i];
+                spawnSparks(a.x, a.y, 12, '#94a3b8');
+                game.score += 150;
+            }
+            asteroids = [];
+
+            // Sát thương lớn lên Boss
+            if (boss) {
+                damageBoss(550);
+            }
+
+            activeMissile = null;
+            updateHUD();
+        }
+
+        /* ============================================================================
+         * 5. THIẾT KẾ CÁC MÀN CHƠI (STANDARD + ADVANCED WAVES & 4 EPIC BOSS FIGHTS)
+         * ============================================================================ */
+        function createAsteroidObj(x, y, size, vx, vy, isMagma = false, splitLevel = 0, difficultyMult = 1) {
+            const hp = Math.round((size * (isMagma ? 2.1 : 1.6)) * difficultyMult);
+            const vertices = [];
+            const pts = 8;
+            for (let p = 0; p < pts; p++) {
+                const ang = (p / pts) * Math.PI * 2;
+                const rad = size * (0.78 + Math.random() * 0.32);
+                vertices.push({ x: Math.cos(ang) * rad, y: Math.sin(ang) * rad });
+            }
+            return {
+                x, y, vx, vy,
+                rot: 0,
+                vRot: (Math.random() - 0.5) * 3.5,
+                radius: size,
+                hp,
+                maxHp: hp,
+                isMagma,
+                splitLevel,
+                vertices
+            };
+        }
+
+        function startWave(waveNum) {
+            game.wave = waveNum;
+            chickens = [];
+            asteroids = [];
+            hazards = [];
+            boss = null;
+            document.getElementById('bossHud').classList.add('hidden');
+
+            const difficultyMult = 1 + (waveNum - 1) * 0.22;
+
+            // MỖI 5 MÀN LÀ ĐẤU TRÙM (WAVE 5, 10, 15, 20...)
+            if (waveNum % 5 === 0) {
+                sfx.playSiren(true);
+                const bossIndex = ((waveNum / 5 - 1) % 4) + 1; // 1, 2, 3, 4
+
+                let bossTitle = '';
+                let subTitle = '';
+                let bossType = 'king';
+                let maxHp = Math.round(1600 * difficultyMult);
+
+                if (bossIndex === 1) {
+                    bossType = 'king';
+                    bossTitle = '👑 ĐẠI ĐẾ GÀ KHỔNG LỒ';
+                    subTitle = 'Trùm Quân Sự: Đập chấn động & Mưa trứng 360 độ!';
+                } else if (bossIndex === 2) {
+                    bossType = 'ufo';
+                    bossTitle = '🛸 ĐĨA BAY GÀ MẸ (MOTHER-HEN UFO)';
+                    subTitle = 'Trùm Không Gian: Tia Laser Kép & Triệu hồi Gà Cyborg!';
+                    maxHp = Math.round(2100 * difficultyMult);
+                } else if (bossIndex === 3) {
+                    bossType = 'mecha';
+                    bossTitle = '🤖 GÀ ROBOT HỦY DIỆT MK-II';
+                    subTitle = 'Trùm Cơ Khí Cao Cấp: Pháo Gatling, Tên Lửa Tầm Nhiệt & Hóa Điên!';
+                    maxHp = Math.round(2800 * difficultyMult);
+                } else {
+                    bossType = 'yolkstar';
+                    bossTitle = '🌑 TRỨNG VŨ TRỤ HẮC ÁM (YOLK-STAR)';
+                    subTitle = 'Trùm Tối Thượng: Lõi Plasma Mở Vỏ & Laser Xoay 4 Hướng!';
+                    maxHp = Math.round(3500 * difficultyMult);
+                }
+
+                game.waveTitle = `⚠️ ĐẤU TRÙM MÀN ${waveNum} ⚠️`;
+                game.waveSubTitle = `${bossTitle} - ${subTitle}`;
+
+                boss = {
+                    x: W / 2,
+                    y: -140,
+                    targetX: W / 2,
+                    targetY: 155,
+                    vx: 155,
+                    radius: bossType === 'yolkstar' ? 78 : 70,
+                    hp: maxHp,
+                    maxHp: maxHp,
+                    bossType: bossType,
+                    attackTimer: 2.2,
+                    attackPattern: 0,
+                    laserTimer: 0,
+                    wingPhase: 0,
+                    shellOpen: 0,
+                    crossLaserAngle: 0,
+                    crossLaserActive: 0,
+                    enraged: false
+                };
+
+                const bossHud = document.getElementById('bossHud');
+                const bossName = document.getElementById('bossName');
+                bossName.textContent = bossTitle;
+                bossHud.classList.remove('hidden');
+                updateBossHUD();
+                game.bannerTimer = 3.0;
+                updateHUD();
+                return;
+            }
+
+            // CÁC MÀN CAO CẤP ĐẶC BIỆT (Tích hợp mượt mà từ màn 1 -> 20+)
+            // Xác định loại màn dựa trên số màn
+            const stageMod = waveNum % 10;
+
+            if (waveNum === 1 || (waveNum > 10 && stageMod === 1)) {
+                // MÀN ĐỘI HÌNH CỔ ĐIỂN KẾT HỢP GÀ GIÁP SẮT Ở MÀN CAO
+                game.waveTitle = `MÀN ${waveNum}: ĐỘI HÌNH XÂM LĂNG`;
+                game.waveSubTitle = waveNum >= 11 ? 'Đội hình Gà Thiết Giáp Cyborg dàn trận!' : 'Binh đoàn gà dàn trận ngang chuẩn bị thả trứng!';
+                const cols = Math.min(9, Math.max(5, Math.floor(W / 95)));
+                const rows = 4;
+                const spacingX = Math.min(78, (W * 0.78) / cols);
+                const startX = (W - (cols - 1) * spacingX) / 2;
+
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const isCyborg = (waveNum >= 4 && r === 0) || (waveNum >= 11 && r <= 1);
+                        const hp = Math.round((32 + r * 8) * difficultyMult * (isCyborg ? 1.8 : 1));
+                        chickens.push({
+                            x: startX + c * spacingX,
+                            y: -60 - r * 65,
+                            baseX: startX + c * spacingX,
+                            baseY: 95 + r * 62,
+                            vx: 0,
+                            vy: 0,
+                            behavior: 'formation',
+                            enemyClass: isCyborg ? 'cyborg' : 'normal',
+                            hp,
+                            maxHp: hp,
+                            radius: 24,
+                            wingPhase: Math.random() * Math.PI * 2,
+                            color: isCyborg ? '#94a3b8' : (r === 0 ? '#f87171' : (r === 1 ? '#fbbf24' : '#ffffff')),
+                            eggCooldown: 2 + Math.random() * 4.5
+                        });
+                    }
+                }
+
+            } else if (waveNum === 2 || stageMod === 2) {
+                if (waveNum >= 12) {
+                    // MÀN 12+: KHO BÁU GÀ VÀNG VŨ TRỤ (BONUS TREASURE WAVE)
+                    game.waveTitle = `MÀN ${waveNum}: KHO BÁU GÀ VÀNG VŨ TRỤ`;
+                    game.waveSubTitle = 'Săn lùng Gà Vàng Hoàng Gia & Két Sắt để nhận mưa Đùi Gà và Hộp Quà!';
+                    const total = 18;
+                    for (let i = 0; i < total; i++) {
+                        const fromLeft = i % 2 === 0;
+                        const hp = Math.round(55 * difficultyMult);
+                        chickens.push({
+                            x: fromLeft ? -60 - i * 45 : W + 60 + i * 45,
+                            y: 85 + (i % 4) * 65,
+                            vx: fromLeft ? 210 : -210,
+                            vy: 0,
+                            behavior: 'swoop',
+                            enemyClass: 'golden',
+                            phaseOffset: i * 0.5,
+                            hp,
+                            maxHp: hp,
+                            radius: 26,
+                            wingPhase: Math.random() * Math.PI * 2,
+                            color: '#facc15',
+                            eggCooldown: 1.8 + Math.random() * 3
+                        });
+                    }
+                } else {
+                    // MÀN 2: LÍNH DÙ & GÀ CẢM TỬ ĐEO BOM
+                    game.waveTitle = `MÀN ${waveNum}: LÍNH DÙ & GÀ CẢM TỬ`;
+                    game.waveSubTitle = 'Gà nhảy dù kết hợp Gà Cảm Tử đeo thuốc nổ!';
+                    const total = 18 + Math.min(waveNum * 2, 12);
+                    for (let i = 0; i < total; i++) {
+                        const isBomber = i % 5 === 0;
+                        const hp = Math.round(38 * difficultyMult);
+                        const fromLeft = i % 2 === 0;
+                        chickens.push({
+                            x: fromLeft ? -50 - i * 35 : W + 50 + i * 35,
+                            y: 80 + (i % 4) * 65,
+                            vx: fromLeft ? 145 : -145,
+                            vy: 0,
+                            behavior: 'swoop',
+                            enemyClass: isBomber ? 'bomber' : 'normal',
+                            phaseOffset: i * 0.6,
+                            hp,
+                            maxHp: hp,
+                            radius: 24,
+                            hasParachute: i % 3 === 0 && !isBomber,
+                            wingPhase: Math.random() * Math.PI * 2,
+                            color: isBomber ? '#fb7185' : (i % 3 === 0 ? '#38bdf8' : '#fef08a'),
+                            eggCooldown: 1.5 + Math.random() * 4
+                        });
+                    }
+                }
+
+            } else if (waveNum === 3 || stageMod === 8 || stageMod === 3) {
+                // MÀN 3, 8, 13, 18: MƯA THIÊN THẠCH LỬA MAGMA & BÃO ĐIỆN TỪ (SOLAR FLARE)
+                const isAdvancedMeteor = waveNum >= 8;
+                game.waveTitle = isAdvancedMeteor
+                    ? `MÀN CAO CẤP ${waveNum}: THIÊN THẠCH LỬA & BÃO ĐIỆN TỪ`
+                    : `MÀN ${waveNum}: MƯA THIÊN THẠCH`;
+                game.waveSubTitle = isAdvancedMeteor
+                    ? 'Thiên thạch Magma nổ tách làm đôi & Cột Bão Từ quét dọc màn hình!'
+                    : 'Né tránh và bắn vỡ các tảng thiên thạch khổng lồ!';
+
+                const count = 20 + Math.min(waveNum * 2, 22);
+                for (let i = 0; i < count; i++) {
+                    const isMagma = isAdvancedMeteor && (i % 2 === 0);
+                    const size = isMagma ? (32 + Math.random() * 18) : (22 + Math.random() * 24);
+                    asteroids.push(
+                        createAsteroidObj(
+                            Math.random() * (W - 100) + 50,
+                            -80 - i * 95,
+                            size,
+                            (Math.random() - 0.5) * 95,
+                            135 + Math.random() * 110 + waveNum * 5,
+                            isMagma,
+                            isMagma ? 1 : 0,
+                            difficultyMult
+                        )
+                    );
+                }
+
+                // Thêm Cột Bão Điện Từ (Solar Flare Hazard) ở màn cao cấp
+                if (isAdvancedMeteor) {
+                    for (let f = 0; f < 3; f++) {
+                        hazards.push({
+                            type: 'solar_flare',
+                            x: (W * 0.2) + f * (W * 0.3),
+                            width: 54,
+                            timer: 2.5 + f * 2.2,
+                            state: 'warning', // warning -> active -> cooldown
+                            stateTime: 2.0
+                        });
+                    }
+                }
+
+            } else if (waveNum === 4) {
+                // MÀN 4: VÒNG XOÁY CẢM TỬ & GÀ ĐEO BOM
+                game.waveTitle = `MÀN ${waveNum}: PHI ĐỘI CẢM TỬ ĐEO BOM`;
+                game.waveSubTitle = 'Cẩn thận Gà Cảm Tử lao thẳng vào phi thuyền và phát nổ!';
+                const cols = Math.min(8, Math.max(5, Math.floor(W / 100)));
+                const rows = 4;
+                const spacingX = Math.min(82, (W * 0.76) / cols);
+                const startX = (W - (cols - 1) * spacingX) / 2;
+
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const isBomber = (r === 0 || (r === 1 && c % 2 === 0));
+                        const hp = Math.round(45 * difficultyMult);
+                        chickens.push({
+                            x: (c % 2 === 0) ? -80 : W + 80,
+                            y: -40 - r * 50,
+                            baseX: startX + c * spacingX,
+                            baseY: 100 + r * 62,
+                            vx: 0,
+                            vy: 0,
+                            behavior: 'kamikaze_formation',
+                            enemyClass: isBomber ? 'bomber' : 'cyborg',
+                            diveTimer: 3.0 + Math.random() * 7,
+                            isDiving: false,
+                            hp,
+                            maxHp: hp,
+                            radius: 25,
+                            wingPhase: Math.random() * Math.PI * 2,
+                            color: isBomber ? '#f43f5e' : '#c084fc',
+                            eggCooldown: 1.8 + Math.random() * 3.5
+                        });
+                    }
+                }
+
+            } else if (stageMod === 6) {
+                // MÀN CAO CẤP 6, 16: XOÁY NƯỚC NGÂN HÀ & GÀ NINJA DỊCH CHUYỂN
+                game.waveTitle = `MÀN CAO CẤP ${waveNum}: XOÁY NƯỚC NGÂN HÀ & GÀ NINJA`;
+                game.waveSubTitle = 'Gà Ninja dịch chuyển tức thời và phóng Phi Tiêu Shuriken!';
+                const total = 24;
+                for (let i = 0; i < total; i++) {
+                    const isNinja = i % 2 === 0;
+                    const hp = Math.round(52 * difficultyMult);
+                    const arm = i % 2;
+                    const angleOffset = (i / total) * Math.PI * 4 + arm * Math.PI;
+                    chickens.push({
+                        x: W / 2,
+                        y: -80,
+                        vx: 0,
+                        vy: 0,
+                        behavior: 'vortex',
+                        enemyClass: isNinja ? 'ninja' : 'cyborg',
+                        vortexAngle: angleOffset,
+                        vortexRadius: 55 + (i % 6) * 32,
+                        teleportTimer: 3.2 + Math.random() * 4,
+                        hp,
+                        maxHp: hp,
+                        radius: 24,
+                        wingPhase: Math.random() * Math.PI * 2,
+                        color: isNinja ? '#1e293b' : '#38bdf8',
+                        eggCooldown: 1.6 + Math.random() * 3.2
+                    });
+                }
+
+            } else if (stageMod === 7) {
+                // MÀN CAO CẤP 7, 17: VÒNG XOAY TỬ THẦN (CONCENTRIC RINGS) & GÀ KHIÊN TỪ TRƯỜNG
+                game.waveTitle = `MÀN CAO CẤP ${waveNum}: VÒNG XOAY TỬ THẦN`;
+                game.waveSubTitle = 'Hai vòng tròn Gà Khiên Năng Lượng & Gà Cyborg xoay ngược chiều!';
+                const centerX = W / 2;
+                const centerY = 195;
+
+                // Hạt nhân Chỉ Huy ở tâm vòng xoay
+                const coreHp = Math.round(320 * difficultyMult);
+                chickens.push({
+                    x: centerX,
+                    y: -80,
+                    ringCenterX: centerX,
+                    ringCenterY: centerY,
+                    ringRadius: 0,
+                    ringAngle: 0,
+                    ringSpeed: 0,
+                    behavior: 'concentric_ring',
+                    enemyClass: 'shield',
+                    shieldHp: Math.round(140 * difficultyMult),
+                    maxShieldHp: Math.round(140 * difficultyMult),
+                    hp: coreHp,
+                    maxHp: coreHp,
+                    radius: 34,
+                    wingPhase: 0,
+                    color: '#f59e0b',
+                    eggCooldown: 1.8
+                });
+
+                // Vòng trong (8 Gà Khiên Năng Lượng xoay thuận chiều kim đồng hồ)
+                const innerCount = 8;
+                for (let i = 0; i < innerCount; i++) {
+                    const hp = Math.round(50 * difficultyMult);
+                    const sHp = Math.round(65 * difficultyMult);
+                    chickens.push({
+                        x: centerX,
+                        y: -80,
+                        ringCenterX: centerX,
+                        ringCenterY: centerY,
+                        ringRadius: 85,
+                        ringAngle: (i / innerCount) * Math.PI * 2,
+                        ringSpeed: 1.35,
+                        behavior: 'concentric_ring',
+                        enemyClass: 'shield',
+                        shieldHp: sHp,
+                        maxShieldHp: sHp,
+                        hp,
+                        maxHp: hp,
+                        radius: 24,
+                        wingPhase: i,
+                        color: '#38bdf8',
+                        eggCooldown: 2.2 + Math.random() * 3
+                    });
+                }
+
+                // Vòng ngoài (14 Gà Giáp Sắt Cyborg xoay ngược chiều kim đồng hồ)
+                const outerCount = 14;
+                for (let i = 0; i < outerCount; i++) {
+                    const hp = Math.round(65 * difficultyMult);
+                    chickens.push({
+                        x: centerX,
+                        y: -80,
+                        ringCenterX: centerX,
+                        ringCenterY: centerY,
+                        ringRadius: 160,
+                        ringAngle: (i / outerCount) * Math.PI * 2,
+                        ringSpeed: -0.95,
+                        behavior: 'concentric_ring',
+                        enemyClass: 'cyborg',
+                        hp,
+                        maxHp: hp,
+                        radius: 24,
+                        wingPhase: i,
+                        color: '#94a3b8',
+                        eggCooldown: 2.0 + Math.random() * 3.5
+                    });
+                }
+
+            } else if (stageMod === 9) {
+                // MÀN CAO CẤP 9, 19: PHỤC KÍCH CỔNG KHÔNG GIAN 4 HƯỚNG (PORTAL AMBUSH)
+                game.waveTitle = `MÀN CAO CẤP ${waveNum}: CỔNG KHÔNG GIAN PHỤC KÍCH`;
+                game.waveSubTitle = 'Gà Tinh Nhuệ chui ra từ 3 Cổng Dịch Chuyển Không Gian hai bên sườn!';
+
+                const portalPositions = [
+                    { x: 65, y: 150, color: '#a855f7' },
+                    { x: W - 65, y: 150, color: '#38bdf8' },
+                    { x: W / 2, y: 85, color: '#f43f5e' }
+                ];
+                portalPositions.forEach(p => {
+                    hazards.push({
+                        type: 'portal',
+                        x: p.x,
+                        y: p.y,
+                        radius: 38,
+                        color: p.color,
+                        rot: 0
+                    });
+                });
+
+                const total = 24;
+                for (let i = 0; i < total; i++) {
+                    const portal = portalPositions[i % portalPositions.length];
+                    const classes = ['ninja', 'cyborg', 'shield', 'bomber'];
+                    const chosenClass = classes[i % classes.length];
+                    const hp = Math.round(58 * difficultyMult);
+                    chickens.push({
+                        x: portal.x,
+                        y: portal.y,
+                        baseX: (W * 0.16) + ((i % 8) * (W * 0.68 / 7)),
+                        baseY: 110 + Math.floor(i / 8) * 68,
+                        vx: 0,
+                        vy: 0,
+                        behavior: 'portal_ambush',
+                        enemyClass: chosenClass,
+                        shieldHp: chosenClass === 'shield' ? Math.round(60 * difficultyMult) : 0,
+                        maxShieldHp: chosenClass === 'shield' ? Math.round(60 * difficultyMult) : 0,
+                        teleportTimer: 3.5 + Math.random() * 3,
+                        spawnDelay: i * 0.25,
+                        hp,
+                        maxHp: hp,
+                        radius: 24,
+                        wingPhase: Math.random() * Math.PI * 2,
+                        color: portal.color,
+                        eggCooldown: 1.5 + Math.random() * 3
+                    });
+                }
+
+            } else {
+                // MÀN CAO CẤP 14+: PHÁO ĐÀI QUẢ TRỨNG VŨ TRỤ KHỔNG LỒ (GIANT MOTHER EGG FORTRESS)
+                game.waveTitle = `MÀN CAO CẤP ${waveNum}: PHÁO ĐÀI TRỨNG VŨ TRỤ`;
+                game.waveSubTitle = 'Đập vỡ Quả Trứng Khổng Lồ được hộ tống bởi đội vệ binh Gà Khiên!';
+
+                const centerX = W / 2;
+                const centerY = 185;
+                const eggHp = Math.round(1150 * difficultyMult);
+
+                // Quả Trứng Mẹ Khổng Lồ ở trung tâm
+                chickens.push({
+                    x: centerX,
+                    y: -90,
+                    ringCenterX: centerX,
+                    ringCenterY: centerY,
+                    ringRadius: 0,
+                    ringAngle: 0,
+                    ringSpeed: 0,
+                    behavior: 'concentric_ring',
+                    enemyClass: 'mother_egg',
+                    hp: eggHp,
+                    maxHp: eggHp,
+                    radius: 56,
+                    wingPhase: 0,
+                    color: '#fef3c7',
+                    eggCooldown: 1.5
+                });
+
+                // 12 Vệ binh Gà Khiên & Gà Ninja xoay quanh bảo vệ Trứng Mẹ
+                const guards = 12;
+                for (let i = 0; i < guards; i++) {
+                    const isShield = i % 2 === 0;
+                    const hp = Math.round(62 * difficultyMult);
+                    chickens.push({
+                        x: centerX,
+                        y: -90,
+                        ringCenterX: centerX,
+                        ringCenterY: centerY,
+                        ringRadius: 135,
+                        ringAngle: (i / guards) * Math.PI * 2,
+                        ringSpeed: 1.15,
+                        behavior: 'concentric_ring',
+                        enemyClass: isShield ? 'shield' : 'ninja',
+                        shieldHp: isShield ? Math.round(70 * difficultyMult) : 0,
+                        maxShieldHp: isShield ? Math.round(70 * difficultyMult) : 0,
+                        teleportTimer: 4 + Math.random() * 3,
+                        hp,
+                        maxHp: hp,
+                        radius: 24,
+                        wingPhase: i,
+                        color: isShield ? '#38bdf8' : '#1e293b',
+                        eggCooldown: 2.0 + Math.random() * 2.5
+                    });
+                }
+            }
+
+            game.bannerTimer = 2.8;
+            updateHUD();
+        }
+
+        /* ============================================================================
+         * 6. XỬ LÝ SÁT THƯƠNG, RƠI VẬT PHẨM (ĐÙI GÀ, HỘP QUÀ, TIA CHỚP)
+         * ============================================================================ */
+        function spawnProjectile(x, y, vx, vy, projType = 'egg', radius = 8) {
+            eggs.push({
+                x, y, vx, vy,
+                projType, // 'egg', 'laser', 'shuriken', 'homing_missile', 'plasma_orb'
+                rot: 0,
+                radius
+            });
+        }
+
+        function damageChicken(chicken, amount) {
+            // Nếu Gà có Khiên Năng Lượng (Forcefield Chicken)
+            if (chicken.shieldHp && chicken.shieldHp > 0) {
+                chicken.shieldHp -= amount;
+                chicken.hitFlash = 0.06;
+                spawnSparks(chicken.x, chicken.y, 4, '#38bdf8');
+                sfx.playWarpOrShield(false);
+                if (chicken.shieldHp <= 0) {
+                    chicken.shieldHp = 0;
+                    addFloatingText('VỠ KHIÊN!', chicken.x, chicken.y - 20, '#38bdf8');
+                    spawnSparks(chicken.x, chicken.y, 14, '#38bdf8');
+                }
+                return;
+            }
+
+            chicken.hp -= amount;
+            chicken.hitFlash = 0.08;
+
+            if (chicken.hp <= 0) {
+                const idx = chickens.indexOf(chicken);
+                if (idx !== -1) chickens.splice(idx, 1);
+
+                sfx.playChickenCluck(true);
+                spawnFeathers(chicken.x, chicken.y, chicken.enemyClass === 'mother_egg' ? 35 : 12, chicken.color);
+                game.score += (chicken.enemyClass === 'golden' ? 400 : (chicken.enemyClass === 'mother_egg' ? 1500 : 120)) * game.wave;
+
+                // Nếu là Gà Cảm Tử Đeo Bom bị nổ -> Bắn ra vòng mảnh đạn 6 hướng
+                if (chicken.enemyClass === 'bomber') {
+                    sfx.playExplosion(0.7);
+                    spawnSparks(chicken.x, chicken.y, 18, '#f43f5e');
+                    for (let k = 0; k < 6; k++) {
+                        const ang = (k / 6) * Math.PI * 2;
+                        spawnProjectile(chicken.x, chicken.y, Math.cos(ang) * 190, Math.sin(ang) * 190, 'laser', 6);
+                    }
+                }
+
+                // Nếu là Quả Trứng Vũ Trụ Khổng Lồ vỡ -> Nở ra 4 Gà Cyborg con & Mưa quà
+                if (chicken.enemyClass === 'mother_egg') {
+                    sfx.playExplosion(1.4);
+                    addFloatingText('💥 VỠ TRỨNG VŨ TRỤ!', chicken.x, chicken.y, '#fde047');
+                    for (let k = 0; k < 8; k++) {
+                        powerups.push({
+                            type: 'drumstick',
+                            x: chicken.x + (Math.random() - 0.5) * 60,
+                            y: chicken.y,
+                            vx: (Math.random() - 0.5) * 200,
+                            vy: -120 - Math.random() * 100,
+                            rot: 0,
+                            vRot: 5,
+                            radius: 14
+                        });
+                    }
+                    powerups.push({
+                        type: 'lightning',
+                        x: chicken.x,
+                        y: chicken.y,
+                        vx: 0,
+                        vy: 110,
+                        rot: 0,
+                        vRot: 0,
+                        radius: 16
+                    });
+                }
+
+                // Rơi Đùi Gà Nướng (Gà Vàng rơi mưa đùi gà!)
+                const drumCount = chicken.enemyClass === 'golden' ? 6 : (Math.random() < 0.3 ? 2 : 1);
+                for (let i = 0; i < drumCount; i++) {
+                    powerups.push({
+                        type: 'drumstick',
+                        x: chicken.x + (Math.random() - 0.5) * 24,
+                        y: chicken.y,
+                        vx: (Math.random() - 0.5) * 130,
+                        vy: -80 - Math.random() * 90,
+                        rot: Math.random() * Math.PI * 2,
+                        vRot: (Math.random() - 0.5) * 6,
+                        radius: 14
+                    });
+                }
+
+                // Tỷ lệ rơi Hộp Quà Vũ Khí hoặc Tia Chớp Vàng (Gà Vàng tỷ lệ rơi quà cực cao)
+                const roll = Math.random();
+                const giftChance = chicken.enemyClass === 'golden' ? 0.45 : 0.095;
+                const boltChance = chicken.enemyClass === 'golden' ? 0.75 : 0.15;
+
+                if (roll < giftChance) {
+                    const giftColor = Math.floor(Math.random() * 3); // 0, 1, 2
+                    powerups.push({
+                        type: 'gift',
+                        weaponType: giftColor,
+                        x: chicken.x,
+                        y: chicken.y,
+                        vx: 0,
+                        vy: 115,
+                        rot: 0,
+                        vRot: 2,
+                        radius: 16
+                    });
+                } else if (roll < boltChance) {
+                    powerups.push({
+                        type: 'lightning',
+                        x: chicken.x,
+                        y: chicken.y,
+                        vx: 0,
+                        vy: 130,
+                        rot: 0,
+                        vRot: 0,
+                        radius: 15
+                    });
+                }
+                updateHUD();
+            } else {
+                if (chicken.enemyClass === 'cyborg') {
+                    spawnSparks(chicken.x, chicken.y, 3, '#fbbf24');
+                } else {
+                    if (Math.random() < 0.35) sfx.playChickenCluck(false);
+                    spawnFeathers(chicken.x, chicken.y, 2, chicken.color);
+                }
+            }
+        }
+
+        function damageBoss(amount) {
+            if (!boss) return;
+            boss.hp -= amount;
+            boss.hitFlash = 0.06;
+
+            // Boss Gà Robot hoặc Yolk-Star vào trạng thái Cuồng Nộ (Overdrive Rage) khi dưới 40% máu
+            if (!boss.enraged && boss.hp < boss.maxHp * 0.4) {
+                boss.enraged = true;
+                sfx.playSiren(true);
+                game.screenShake = 14;
+                addFloatingText('⚠️ TRÙM HÓA ĐIÊN (OVERDRIVE)!', boss.x, boss.y - 50, '#f43f5e');
+            }
+
+            updateBossHUD();
+
+            if (Math.random() < 0.25) {
+                if (boss.bossType === 'mecha' || boss.bossType === 'yolkstar') {
+                    spawnSparks(boss.x + (Math.random() - 0.5) * 90, boss.y + (Math.random() - 0.5) * 60, 5, '#38bdf8');
+                } else {
+                    spawnFeathers(boss.x + (Math.random() - 0.5) * 80, boss.y + (Math.random() - 0.5) * 50, 3, '#fde047');
+                }
+            }
+
+            if (boss.hp <= 0) {
+                sfx.playExplosion(2.0);
+                sfx.playChickenCluck(true);
+                game.screenShake = 28;
+                game.score += 6000 * Math.ceil(game.wave / 5);
+
+                // Mưa đùi gà và quà thưởng khi hạ Trùm
+                for (let i = 0; i < 20; i++) {
+                    powerups.push({
+                        type: 'drumstick',
+                        x: boss.x + (Math.random() - 0.5) * 100,
+                        y: boss.y + (Math.random() - 0.5) * 60,
+                        vx: (Math.random() - 0.5) * 280,
+                        vy: -150 - Math.random() * 160,
+                        rot: Math.random() * 6,
+                        vRot: (Math.random() - 0.5) * 8,
+                        radius: 14
+                    });
+                }
+                powerups.push({
+                    type: 'lightning',
+                    x: boss.x - 25,
+                    y: boss.y,
+                    vx: -30,
+                    vy: 95,
+                    rot: 0,
+                    vRot: 0,
+                    radius: 16
+                });
+                powerups.push({
+                    type: 'gift',
+                    weaponType: Math.floor(Math.random() * 3),
+                    x: boss.x + 25,
+                    y: boss.y,
+                    vx: 30,
+                    vy: 95,
+                    rot: 0,
+                    vRot: 2,
+                    radius: 16
+                });
+
+                spawnFeathers(boss.x, boss.y, 45, '#fbbf24');
+                spawnSparks(boss.x, boss.y, 40, '#f97316');
+                addFloatingText(`+TIÊU DIỆT ĐẠI BOSS!`, boss.x, boss.y, '#4ade80');
+
+                boss = null;
+                document.getElementById('bossHud').classList.add('hidden');
+                updateHUD();
+            }
+        }
+
+        function killPlayer() {
+            if (player.invulnerableTimer > 0) return;
+            sfx.playExplosion(1.4);
+            game.screenShake = 18;
+            spawnSparks(player.x, player.y, 28, '#38bdf8');
+            spawnSparks(player.x, player.y, 20, '#f43f5e');
+
+            player.lives--;
+            player.heat = 0;
+            player.overheated = false;
+
+            // Giảm 1 cấp vũ khí khi mất mạng (tối thiểu cấp 1)
+            if (player.weaponLevel > 1) {
+                player.weaponLevel--;
+            }
+
+            if (player.lives <= 0) {
+                triggerGameOver();
+            } else {
+                player.invulnerableTimer = 2.8;
+                player.x = W / 2;
+                player.y = H - 100;
+                player.targetX = player.x;
+                player.targetY = player.y;
+                addFloatingText('MẤT 1 MẠNG!', player.x, player.y - 30, '#fb7185');
+            }
+            updateHUD();
+        }
+
+        /* ============================================================================
+         * 7. CẬP NHẬT LOGIC TRÒ CHƠI (UPDATE LOOP)
+         * ============================================================================ */
+        function update(dt) {
+            game.time += dt;
+
+            // Nền sao vũ trụ luôn trôi
+            for (const s of stars) {
+                s.y += s.speed * dt;
+                if (s.y > H) {
+                    s.y = -5;
+                    s.x = Math.random() * W;
+                }
+            }
+
+            if (game.state !== 'PLAYING') return;
+
+            if (game.bannerTimer > 0) game.bannerTimer -= dt;
+            if (game.screenShake > 0) game.screenShake = Math.max(0, game.screenShake - dt * 35);
+            if (game.flashAlpha > 0) game.flashAlpha = Math.max(0, game.flashAlpha - dt * 1.8);
+            if (player.invulnerableTimer > 0) player.invulnerableTimer -= dt;
+            if (player.recoil > 0) player.recoil = Math.max(0, player.recoil - dt * 30);
+
+            // Di chuyển tàu người chơi
+            let moveX = 0;
+            let moveY = 0;
+            if (keys['ArrowLeft'] || keys['KeyA']) moveX -= 1;
+            if (keys['ArrowRight'] || keys['KeyD']) moveX += 1;
+            if (keys['ArrowUp'] || keys['KeyW']) moveY -= 1;
+            if (keys['ArrowDown'] || keys['KeyS']) moveY += 1;
+
+            if (moveX !== 0 || moveY !== 0) {
+                const len = Math.hypot(moveX, moveY);
+                player.x += (moveX / len) * player.speed * dt;
+                player.y += (moveY / len) * player.speed * dt;
+                player.targetX = player.x;
+                player.targetY = player.y;
+            } else if (player.usePointer) {
+                player.x += (player.targetX - player.x) * Math.min(1, dt * 16);
+                player.y += (player.targetY - player.y) * Math.min(1, dt * 16);
+            }
+
+            // Giới hạn khung hình
+            player.x = Math.max(28, Math.min(W - 28, player.x));
+            player.y = Math.max(70, Math.min(H - 35, player.y));
+
+            // Làm mát súng & Xử lý bắn
+            const wantToShoot = game.autoFire || isPointerDown || keys['Space'];
+            const coolRate = player.overheated ? 35 : (wantToShoot ? 12 : 30);
+            player.heat = Math.max(0, player.heat - coolRate * dt);
+            if (player.overheated && player.heat <= 0) {
+                player.overheated = false;
+                addFloatingText('SÚNG ĐÃ NGUỘI!', player.x, player.y - 30, '#38bdf8');
+            }
+
+            if (player.fireCooldown > 0) player.fireCooldown -= dt;
+            if (wantToShoot && player.fireCooldown <= 0 && !player.overheated) {
+                fireWeapon();
+            }
+
+            // Cập nhật Tên Lửa Hủy Diệt đang bay
+            if (activeMissile) {
+                activeMissile.progress += dt * 1.9;
+                activeMissile.x += (activeMissile.targetX - activeMissile.x) * dt * 5;
+                activeMissile.y += (activeMissile.targetY - activeMissile.y) * dt * 5;
+                spawnSparks(activeMissile.x, activeMissile.y + 15, 2, '#f97316');
+                if (activeMissile.progress >= 1) {
+                    detonateMissile();
+                }
+            }
+
+            // Cập nhật Chướng ngại vật môi trường (Bão Điện Từ Solar Flare & Cổng Không Gian)
+            for (const hz of hazards) {
+                if (hz.type === 'portal') {
+                    hz.rot += dt * 3.5;
+                } else if (hz.type === 'solar_flare') {
+                    hz.timer -= dt;
+                    if (hz.state === 'warning' && hz.timer <= 0) {
+                        hz.state = 'active';
+                        hz.timer = 1.35;
+                        sfx.playSiren(false);
+                        game.screenShake = 6;
+                    } else if (hz.state === 'active') {
+                        if (Math.abs(player.x - hz.x) < hz.width * 0.45) {
+                            killPlayer();
+                        }
+                        if (hz.timer <= 0) {
+                            hz.state = 'cooldown';
+                            hz.timer = 3.2;
+                        }
+                    } else if (hz.state === 'cooldown' && hz.timer <= 0) {
+                        hz.x = 70 + Math.random() * (W - 140);
+                        hz.state = 'warning';
+                        hz.timer = 2.1;
+                    }
+                }
+            }
+
+            // Cập nhật Đạn người chơi
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                b.x += b.vx * dt;
+                b.y += b.vy * dt;
+
+                if (b.y < -40 || b.x < -40 || b.x > W + 40) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+
+                // Kiểm tra va chạm với Gà
+                let bulletRemoved = false;
+                for (let j = chickens.length - 1; j >= 0; j--) {
+                    const c = chickens[j];
+                    if (c.spawnDelay && c.spawnDelay > 0) continue;
+                    if (b.hitSet && b.hitSet.has(c)) continue;
+                    const dist = Math.hypot(b.x - c.x, b.y - c.y);
+                    if (dist < b.radius + c.radius) {
+                        damageChicken(c, b.damage);
+                        spawnSparks(b.x, b.y, 4, WEAPON_NAMES[b.type].color);
+                        if (b.hitSet) b.hitSet.add(c);
+                        b.pierce--;
+                        if (b.pierce <= 0) {
+                            bullets.splice(i, 1);
+                            bulletRemoved = true;
+                            break;
+                        }
+                    }
+                }
+                if (bulletRemoved) continue;
+
+                // Kiểm tra va chạm với Thiên thạch
+                for (let j = asteroids.length - 1; j >= 0; j--) {
+                    const a = asteroids[j];
+                    const dist = Math.hypot(b.x - a.x, b.y - a.y);
+                    if (dist < b.radius + a.radius) {
+                        a.hp -= b.damage;
+                        spawnSparks(b.x, b.y, 4, a.isMagma ? '#f97316' : '#cbd5e1');
+                        bullets.splice(i, 1);
+                        bulletRemoved = true;
+                        if (a.hp <= 0) {
+                            sfx.playExplosion(0.6);
+                            spawnSparks(a.x, a.y, 14, a.isMagma ? '#fb923c' : '#94a3b8');
+                            game.score += a.isMagma ? 250 : 150;
+
+                            // Nếu là Thiên thạch Lửa Magma -> Tách làm 2 mảnh nhỏ bay chéo
+                            if (a.isMagma && a.splitLevel > 0) {
+                                const childSize = a.radius * 0.58;
+                                asteroids.push(createAsteroidObj(a.x - 10, a.y, childSize, -110, a.vy * 1.1, true, 0, 1));
+                                asteroids.push(createAsteroidObj(a.x + 10, a.y, childSize, 110, a.vy * 1.1, true, 0, 1));
+                            }
+
+                            if (Math.random() < 0.28) {
+                                powerups.push({
+                                    type: 'drumstick',
+                                    x: a.x,
+                                    y: a.y,
+                                    vx: (Math.random() - 0.5) * 90,
+                                    vy: -60,
+                                    rot: 0,
+                                    vRot: 4,
+                                    radius: 14
+                                });
+                            }
+                            asteroids.splice(j, 1);
+                            updateHUD();
+                        }
+                        break;
+                    }
+                }
+                if (bulletRemoved) continue;
+
+                // Kiểm tra va chạm với Boss
+                if (boss) {
+                    const dist = Math.hypot(b.x - boss.x, b.y - boss.y);
+                    if (dist < b.radius + boss.radius) {
+                        damageBoss(b.damage);
+                        spawnSparks(b.x, b.y, 5, WEAPON_NAMES[b.type].color);
+                        bullets.splice(i, 1);
+                    }
+                }
+            }
+
+            // Cập nhật Gà địch & Các hành vi Màn Cao Cấp
+            const swayOffset = Math.sin(game.time * 2.1) * 42;
+            for (let i = chickens.length - 1; i >= 0; i--) {
+                const c = chickens[i];
+                if (c.spawnDelay && c.spawnDelay > 0) {
+                    c.spawnDelay -= dt;
+                    continue;
+                }
+
+                c.wingPhase += dt * 9;
+                if (c.hitFlash > 0) c.hitFlash -= dt;
+
+                // Hồi phục nhẹ Khiên Năng Lượng nếu chưa vỡ hẳn
+                if (c.enemyClass === 'shield' && c.shieldHp > 0 && c.shieldHp < c.maxShieldHp) {
+                    c.shieldHp = Math.min(c.maxShieldHp, c.shieldHp + dt * 4);
+                }
+
+                // Kỹ năng Dịch Chuyển Tức Thời của Gà Ninja
+                if (c.enemyClass === 'ninja') {
+                    c.teleportTimer = (c.teleportTimer || 3.5) - dt;
+                    if (c.teleportTimer <= 0 && c.y > 40) {
+                        spawnSparks(c.x, c.y, 10, '#a855f7');
+                        sfx.playWarpOrShield(true);
+                        c.x = 70 + Math.random() * (W - 140);
+                        c.y = 75 + Math.random() * (H * 0.42);
+                        if (c.baseX !== undefined) c.baseX = c.x;
+                        if (c.baseY !== undefined) c.baseY = c.y;
+                        spawnSparks(c.x, c.y, 10, '#38bdf8');
+                        c.teleportTimer = 3.2 + Math.random() * 3.5;
+                    }
+                }
+
+                if (c.behavior === 'formation' || c.behavior === 'portal_ambush') {
+                    const targetX = c.baseX + swayOffset;
+                    const targetY = c.baseY + Math.cos(game.time * 3 + c.baseX * 0.02) * 8;
+                    c.x += (targetX - c.x) * dt * 4.5;
+                    c.y += (targetY - c.y) * dt * 4.5;
+                } else if (c.behavior === 'swoop') {
+                    c.x += c.vx * dt;
+                    c.y += Math.sin(game.time * 3.5 + c.phaseOffset) * 95 * dt;
+                    if (c.vx > 0 && c.x > W + 60) c.x = -50;
+                    if (c.vx < 0 && c.x < -60) c.x = W + 50;
+                } else if (c.behavior === 'vortex') {
+                    c.vortexAngle += dt * 1.45;
+                    const centerX = W / 2 + Math.sin(game.time * 1.1) * 65;
+                    const centerY = 195 + Math.cos(game.time * 0.9) * 25;
+                    const tx = centerX + Math.cos(c.vortexAngle) * (c.vortexRadius * (W / 900 + 0.45));
+                    const ty = centerY + Math.sin(c.vortexAngle) * (c.vortexRadius * 0.55);
+                    c.x += (tx - c.x) * dt * 5;
+                    c.y += (ty - c.y) * dt * 5;
+                } else if (c.behavior === 'concentric_ring') {
+                    c.ringAngle += c.ringSpeed * dt;
+                    const cx = c.ringCenterX + Math.sin(game.time * 1.2) * 55;
+                    const cy = c.ringCenterY;
+                    const tx = cx + Math.cos(c.ringAngle) * c.ringRadius;
+                    const ty = cy + Math.sin(c.ringAngle) * (c.ringRadius * 0.72);
+                    c.x += (tx - c.x) * dt * 6;
+                    c.y += (ty - c.y) * dt * 6;
+                } else if (c.behavior === 'kamikaze_formation') {
+                    if (!c.isDiving) {
+                        const targetX = c.baseX + swayOffset;
+                        c.x += (targetX - c.x) * dt * 4;
+                        c.y += (c.baseY - c.y) * dt * 4;
+                        c.diveTimer -= dt;
+                        if (c.diveTimer <= 0) {
+                            c.isDiving = true;
+                            const ang = Math.atan2(player.y - c.y, player.x - c.x);
+                            const spd = c.enemyClass === 'bomber' ? 340 : 290;
+                            c.vx = Math.cos(ang) * spd;
+                            c.vy = Math.sin(ang) * spd;
+                        }
+                    } else {
+                        c.x += c.vx * dt;
+                        c.y += c.vy * dt;
+                        if (c.y > H + 50 || c.x < -60 || c.x > W + 60) {
+                            c.isDiving = false;
+                            c.y = -50;
+                            c.diveTimer = 3.5 + Math.random() * 5;
+                        }
+                    }
+                }
+
+                // Gà thả Trứng / Bắn Laser / Phóng Phi Tiêu Shuriken tùy theo Class
+                c.eggCooldown -= dt;
+                if (c.eggCooldown <= 0 && c.y > 0 && c.y < H - 140) {
+                    c.eggCooldown = Math.max(1.8, 5.2 - game.wave * 0.16) + Math.random() * 3.5;
+                    if (c.enemyClass === 'mother_egg') {
+                        // Trứng Vũ Trụ Khổng Lồ bắn vòng 8 trứng năng lượng
+                        for (let k = 0; k < 8; k++) {
+                            const ang = (k / 8) * Math.PI * 2 + game.time;
+                            spawnProjectile(c.x, c.y, Math.cos(ang) * 180, Math.sin(ang) * 180 + 40, 'plasma_orb', 9);
+                        }
+                    } else if (Math.random() < 0.5) {
+                        if (c.enemyClass === 'ninja') {
+                            // Phóng phi tiêu Shuriken nhắm thẳng vào vị trí người chơi
+                            const ang = Math.atan2(player.y - c.y, player.x - c.x);
+                            spawnProjectile(c.x, c.y + 12, Math.cos(ang) * 265, Math.sin(ang) * 265, 'shuriken', 9);
+                        } else if (c.enemyClass === 'cyborg') {
+                            // Bắn đạn xung Laser đỏ tốc độ cao
+                            spawnProjectile(c.x, c.y + 18, 0, 290 + Math.min(game.wave * 10, 140), 'laser', 7);
+                        } else {
+                            spawnProjectile(c.x, c.y + 18, 0, 185 + Math.min(game.wave * 10, 130), 'egg', 8);
+                        }
+                    }
+                }
+
+                // Va chạm trực tiếp với tàu người chơi
+                if (Math.hypot(c.x - player.x, c.y - player.y) < c.radius + player.radius - 4) {
+                    killPlayer();
+                }
+            }
+
+            // Cập nhật Thiên thạch
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                const a = asteroids[i];
+                a.x += a.vx * dt;
+                a.y += a.vy * dt;
+                a.rot += a.vRot * dt;
+
+                if (Math.hypot(a.x - player.x, a.y - player.y) < a.radius + player.radius - 4) {
+                    killPlayer();
+                }
+                if (a.y > H + 90 || a.x < -100 || a.x > W + 100) {
+                    asteroids.splice(i, 1);
+                }
+            }
+
+            // Cập nhật 4 Đại Trùm (Boss Fight)
+            if (boss) {
+                const rageSpeedMult = boss.enraged ? 1.45 : 1.0;
+                boss.wingPhase += dt * 7 * rageSpeedMult;
+                if (boss.hitFlash > 0) boss.hitFlash -= dt;
+
+                // Di chuyển lượn ngang và áp sát
+                boss.y += (boss.targetY - boss.y) * dt * 3;
+                boss.x += boss.vx * rageSpeedMult * dt;
+                if (boss.x < 110) { boss.x = 110; boss.vx = Math.abs(boss.vx); }
+                if (boss.x > W - 110) { boss.x = W - 110; boss.vx = -Math.abs(boss.vx); }
+
+                // Kiểm tra tia Laser dọc hoặc Laser 4 hướng của Boss
+                if (boss.laserTimer > 0) {
+                    boss.laserTimer -= dt;
+                    if (boss.bossType === 'ufo') {
+                        // Đĩa bay bắn 2 tia Laser song song
+                        if ((Math.abs(player.x - (boss.x - 42)) < 22 || Math.abs(player.x - (boss.x + 42)) < 22) && player.y > boss.y) {
+                            killPlayer();
+                        }
+                    } else {
+                        if (Math.abs(player.x - boss.x) < 28 && player.y > boss.y) {
+                            killPlayer();
+                        }
+                    }
+                }
+
+                // Laser Xoay 4 Hướng của Trùm Cuối Yolk-Star
+                if (boss.crossLaserActive > 0) {
+                    boss.crossLaserActive -= dt;
+                    boss.crossLaserAngle += dt * (boss.enraged ? 1.4 : 0.95);
+                    boss.shellOpen = Math.min(1, boss.shellOpen + dt * 3);
+
+                    // Kiểm tra khoảng cách từ tàu người chơi tới 4 tia laser xoay
+                    for (let arm = 0; arm < 4; arm++) {
+                        const ang = boss.crossLaserAngle + arm * (Math.PI / 2);
+                        const dx = player.x - boss.x;
+                        const dy = player.y - boss.y;
+                        const proj = dx * Math.cos(ang) + dy * Math.sin(ang);
+                        const perp = Math.abs(-dx * Math.sin(ang) + dy * Math.cos(ang));
+                        if (proj > 30 && perp < 18) {
+                            killPlayer();
+                        }
+                    }
+                } else {
+                    boss.shellOpen = Math.max(0, (boss.shellOpen || 0) - dt * 2);
+                }
+
+                boss.attackTimer -= dt * rageSpeedMult;
+                if (boss.attackTimer <= 0) {
+                    boss.attackPattern = (boss.attackPattern + 1) % 3;
+
+                    if (boss.bossType === 'mecha') {
+                        // BOSS 3: GÀ ROBOT HỦY DIỆT MK-II
+                        if (boss.attackPattern === 0) {
+                            // Phóng 2 Tên lửa tầm nhiệt từ 2 bệ phóng vai
+                            spawnProjectile(boss.x - 52, boss.y + 10, -120, 140, 'homing_missile', 11);
+                            spawnProjectile(boss.x + 52, boss.y + 10, 120, 140, 'homing_missile', 11);
+                            sfx.playShoot(2);
+                            boss.attackTimer = 2.4;
+                        } else if (boss.attackPattern === 1) {
+                            // Súng máy Gatling Laser bắn quạt liên thanh hướng về người chơi
+                            const baseAng = Math.atan2(player.y - boss.y, player.x - boss.x);
+                            for (let k = -3; k <= 3; k++) {
+                                const ang = baseAng + k * 0.16;
+                                spawnProjectile(boss.x, boss.y + 30, Math.cos(ang) * 320, Math.sin(ang) * 320, 'laser', 8);
+                            }
+                            sfx.playShoot(1);
+                            boss.attackTimer = 2.1;
+                        } else {
+                            // Tia Laser Hủy Diệt Trung Tâm
+                            boss.laserTimer = 1.4;
+                            sfx.playSiren(false);
+                            boss.attackTimer = 2.9;
+                        }
+                    } else if (boss.bossType === 'yolkstar') {
+                        // BOSS 4: TRỨNG VŨ TRỤ HẮC ÁM YOLK-STAR
+                        if (boss.attackPattern === 0) {
+                            // Kích hoạt Laser Xoay 4 hướng
+                            boss.crossLaserActive = 2.8;
+                            sfx.playSiren(false);
+                            boss.attackTimer = 3.6;
+                        } else if (boss.attackPattern === 1) {
+                            // Bắn vòng xoáy Cầu Plasma Hắc Ám
+                            const count = 16;
+                            for (let k = 0; k < count; k++) {
+                                const ang = (k / count) * Math.PI * 2 + game.time;
+                                spawnProjectile(boss.x, boss.y, Math.cos(ang) * 230, Math.sin(ang) * 230, 'plasma_orb', 10);
+                            }
+                            sfx.playShoot(2);
+                            boss.attackTimer = 2.4;
+                        } else {
+                            // Phóng phi tiêu & tên lửa hỗn hợp
+                            spawnProjectile(boss.x - 40, boss.y, -90, 200, 'homing_missile', 11);
+                            spawnProjectile(boss.x + 40, boss.y, 90, 200, 'homing_missile', 11);
+                            boss.attackTimer = 2.5;
+                        }
+                    } else {
+                        // BOSS 1 (KING CHICKEN) & BOSS 2 (MOTHER-HEN UFO)
+                        if (boss.attackPattern === 0) {
+                            const count = boss.bossType === 'ufo' ? 14 : 12;
+                            for (let k = 0; k < count; k++) {
+                                const ang = (k / count) * Math.PI * 2;
+                                spawnProjectile(
+                                    boss.x,
+                                    boss.y + 20,
+                                    Math.cos(ang) * 215,
+                                    Math.sin(ang) * 215 + 60,
+                                    boss.bossType === 'ufo' ? 'laser' : 'egg',
+                                    9
+                                );
+                            }
+                            sfx.playChickenCluck(false);
+                            boss.attackTimer = 2.5;
+                        } else if (boss.attackPattern === 1) {
+                            boss.laserTimer = 1.45;
+                            sfx.playSiren(false);
+                            boss.attackTimer = 3.0;
+                        } else {
+                            boss.targetY = Math.min(H * 0.55, 320);
+                            setTimeout(() => { if (boss) boss.targetY = 155; }, 1100);
+                            boss.attackTimer = 2.7;
+                        }
+                    }
+                }
+
+                if (Math.hypot(boss.x - player.x, boss.y - player.y) < boss.radius + player.radius - 8) {
+                    killPlayer();
+                }
+            }
+
+            // Cập nhật Đạn Địch (Trứng, Laser, Phi Tiêu Shuriken, Tên Lửa Tầm Nhiệt, Cầu Plasma)
+            for (let i = eggs.length - 1; i >= 0; i--) {
+                const e = eggs[i];
+                e.rot = (e.rot || 0) + dt * 8;
+
+                // Nếu là Tên lửa tầm nhiệt của Boss Mecha -> Uốn quỹ đạo đuổi theo người chơi
+                if (e.projType === 'homing_missile') {
+                    const desiredAng = Math.atan2(player.y - e.y, player.x - e.x);
+                    const currentAng = Math.atan2(e.vy, e.vx);
+                    let diff = desiredAng - currentAng;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+                    while (diff < -Math.PI) diff += Math.PI * 2;
+                    const newAng = currentAng + Math.sign(diff) * Math.min(Math.abs(diff), dt * 2.1);
+                    const spd = 255;
+                    e.vx = Math.cos(newAng) * spd;
+                    e.vy = Math.sin(newAng) * spd;
+                    if (Math.random() < 0.35) spawnSparks(e.x, e.y, 1, '#f97316');
+                }
+
+                e.x += e.vx * dt;
+                e.y += e.vy * dt;
+
+                if (Math.hypot(e.x - player.x, e.y - player.y) < e.radius + player.radius - 4) {
+                    eggs.splice(i, 1);
+                    killPlayer();
+                    continue;
+                }
+
+                // Ra khỏi màn hình hoặc đập xuống đáy
+                if (e.y > H - 12 || e.y < -60 || e.x < -60 || e.x > W + 60) {
+                    if (e.y > H - 12 && e.projType === 'egg') {
+                        spawnSparks(e.x, H - 10, 6, '#facc15');
+                    }
+                    eggs.splice(i, 1);
+                }
+            }
+
+            // Cập nhật Vật Phẩm rơi (Đùi Gà, Hộp Quà, Tia Chớp)
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const p = powerups[i];
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.rot += p.vRot * dt;
+
+                if (p.type === 'drumstick') {
+                    p.vy += 320 * dt; // Trọng lực cho đùi gà
+                    if (p.y > H - 22 && p.vy > 0 && !p.bounced) {
+                        p.vy = -p.vy * 0.45;
+                        p.bounced = true;
+                    }
+                }
+
+                // Hút nhẹ về phía tàu khi ở gần
+                const dist = Math.hypot(p.x - player.x, p.y - player.y);
+                if (dist < 120) {
+                    p.x += (player.x - p.x) * dt * 6.5;
+                    p.y += (player.y - p.y) * dt * 6.5;
+                }
+
+                if (dist < p.radius + player.radius + 6) {
+                    if (p.type === 'drumstick') {
+                        sfx.playPowerUp(false);
+                        player.drumsticks++;
+                        game.score += 50;
+                        if (player.drumsticks >= 50) {
+                            player.drumsticks -= 50;
+                            player.missiles++;
+                            sfx.playPowerUp(true);
+                            addFloatingText('🚀 +1 TÊN LỬA HỦY DIỆT!', player.x, player.y - 40, '#34d399');
+                        }
+                    } else if (p.type === 'lightning') {
+                        sfx.playPowerUp(true);
+                        player.weaponLevel = Math.min(12, player.weaponLevel + 1);
+                        game.score += 350;
+                        addFloatingText(
+                            player.weaponLevel >= 8 ? `⚡ CẤP ${player.weaponLevel} + DRONE!` : `⚡ VŨ KHÍ CẤP ${player.weaponLevel}!`,
+                            player.x,
+                            player.y - 35,
+                            '#fde047'
+                        );
+                    } else if (p.type === 'gift') {
+                        sfx.playPowerUp(true);
+                        if (player.weaponType === p.weaponType) {
+                            player.weaponLevel = Math.min(12, player.weaponLevel + 1);
+                            addFloatingText(`🎁 TĂNG CẤP ${player.weaponLevel}!`, player.x, player.y - 35, WEAPON_NAMES[p.weaponType].color);
+                        } else {
+                            player.weaponType = p.weaponType;
+                            addFloatingText(`🎁 ĐỔI ${WEAPON_NAMES[p.weaponType].name}!`, player.x, player.y - 35, WEAPON_NAMES[p.weaponType].color);
+                        }
+                    }
+                    powerups.splice(i, 1);
+                    updateHUD();
+                    continue;
+                }
+
+                if (p.y > H + 50) {
+                    powerups.splice(i, 1);
+                }
+            }
+
+            // Cập nhật Hạt (Lông gà & Tia lửa)
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const pt = particles[i];
+                pt.x += pt.vx * dt;
+                pt.y += pt.vy * dt;
+                if (pt.type === 'feather') {
+                    pt.vy += 65 * dt; // Lông gà rơi bồng bềnh
+                    pt.vx *= 0.98;
+                    pt.rot += pt.vRot * dt;
+                }
+                pt.life -= dt;
+                if (pt.life <= 0) particles.splice(i, 1);
+            }
+
+            // Cập nhật Chữ nổi
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                const ft = floatingTexts[i];
+                ft.y += ft.vy * dt;
+                ft.life -= dt;
+                if (ft.life <= 0) floatingTexts.splice(i, 1);
+            }
+
+            // Kiểm tra hoàn thành Wave để sang Wave tiếp theo
+            if (chickens.length === 0 && asteroids.length === 0 && !boss) {
+                startWave(game.wave + 1);
+            }
+
+            // Cập nhật thanh nhiệt độ mỗi frame
+            const heatPct = Math.round((player.heat / player.maxHeat) * 100);
+            document.getElementById('heatBar').style.width = `${heatPct}%`;
+            document.getElementById('heatPercent').textContent = `${heatPct}%`;
+            document.getElementById('heatLabel').textContent = player.overheated ? 'QUÁ NHIỆT!' : 'NHIỆT ĐỘ';
+            document.getElementById('heatLabel').className = player.overheated ? 'text-rose-400 animate-pulse' : 'text-cyan-300';
+        }
+
+        /* ============================================================================
+         * 8. HỆ THỐNG ĐỒ HỌA VECTOR/SPRITE VẼ TRỰC TIẾP TRÊN CANVAS
+         * ============================================================================ */
+        function drawPlayerShip(ctx, x, y) {
+            if (player.invulnerableTimer > 0 && Math.floor(game.time * 16) % 2 === 0) return;
+
+            ctx.save();
+            ctx.translate(x, y + player.recoil);
+
+            // Vòng khiên bảo vệ khi vừa hồi sinh
+            if (player.invulnerableTimer > 0) {
+                ctx.beginPath();
+                ctx.arc(0, 0, 34, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+
+            // VẼ 2 DRONE HỘ VỆ KHI VŨ KHÍ ĐẠT CẤP 8+
+            if (player.weaponLevel >= 8) {
+                const droneOffset = 44;
+                const bob = Math.sin(game.time * 6) * 4;
+                [-droneOffset, droneOffset].forEach(dx => {
+                    ctx.save();
+                    ctx.translate(dx, 4 + bob);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.strokeStyle = WEAPON_NAMES[player.weaponType].color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -10);
+                    ctx.lineTo(10, 6);
+                    ctx.lineTo(0, 3);
+                    ctx.lineTo(-10, 6);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = WEAPON_NAMES[player.weaponType].color;
+                    ctx.beginPath();
+                    ctx.arc(0, -1, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+            }
+
+            // Lửa động cơ phản lực
+            const flameLen = 16 + Math.random() * 14 + (player.weaponLevel >= 10 ? 6 : 0);
+            const grad = ctx.createLinearGradient(0, 16, 0, 16 + flameLen);
+            grad.addColorStop(0, '#38bdf8');
+            grad.addColorStop(0.5, '#f59e0b');
+            grad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(-8, 16);
+            ctx.lineTo(0, 16 + flameLen);
+            ctx.lineTo(8, 16);
+            ctx.closePath();
+            ctx.fill();
+
+            // Cánh phi thuyền (Nâng cấp viền vàng rực khi đạt Cấp 10+)
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = player.weaponLevel >= 10 ? '#facc15' : '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, -24);
+            ctx.lineTo(28, 16);
+            ctx.lineTo(10, 12);
+            ctx.lineTo(0, 18);
+            ctx.lineTo(-10, 12);
+            ctx.lineTo(-28, 16);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Thân chính phi thuyền
+            ctx.fillStyle = '#e2e8f0';
+            ctx.beginPath();
+            ctx.moveTo(0, -26);
+            ctx.lineTo(11, 14);
+            ctx.lineTo(0, 19);
+            ctx.lineTo(-11, 14);
+            ctx.closePath();
+            ctx.fill();
+
+            // Buồng lái kính phản quang
+            ctx.fillStyle = WEAPON_NAMES[player.weaponType].color;
+            ctx.beginPath();
+            ctx.ellipse(0, -4, 5, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawChicken(ctx, c) {
+            if (c.spawnDelay && c.spawnDelay > 0) return;
+
+            ctx.save();
+            ctx.translate(c.x, c.y);
+
+            // Trường hợp đặc biệt: QUẢ TRỨNG VŨ TRỤ KHỔNG LỒ (GIANT MOTHER EGG)
+            if (c.enemyClass === 'mother_egg') {
+                ctx.fillStyle = c.hitFlash > 0 ? '#ffffff' : '#fef3c7';
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 48, 60, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Vết nứt phát sáng năng lượng khi mất máu
+                const dmgRatio = 1 - (c.hp / c.maxHp);
+                if (dmgRatio > 0.25) {
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(-18, -20);
+                    ctx.lineTo(0, -5);
+                    ctx.lineTo(-10, 15);
+                    if (dmgRatio > 0.55) {
+                        ctx.lineTo(15, 25);
+                        ctx.moveTo(0, -5);
+                        ctx.lineTo(20, -18);
+                    }
+                    ctx.stroke();
+                }
+                ctx.restore();
+                return;
+            }
+
+            // Dù nhảy nếu là gà nhảy dù đang rơi cao
+            if (c.hasParachute && c.y < 230) {
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(-16, -24); ctx.lineTo(-6, -8);
+                ctx.moveTo(16, -24); ctx.lineTo(6, -8);
+                ctx.stroke();
+
+                ctx.fillStyle = '#38bdf8';
+                ctx.beginPath();
+                ctx.arc(0, -24, 18, Math.PI, 0);
+                ctx.fill();
+            }
+
+            const wingY = Math.sin(c.wingPhase) * 9;
+
+            // Đôi cánh vỗ liên tục
+            ctx.fillStyle = c.hitFlash > 0 ? '#ffffff' : c.color;
+            ctx.strokeStyle = c.enemyClass === 'golden' ? '#b45309' : '#475569';
+            ctx.lineWidth = 1.5;
+
+            ctx.beginPath();
+            ctx.ellipse(-18, wingY * 0.5, 11, 6, -0.3 + wingY * 0.04, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.ellipse(18, wingY * 0.5, 11, 6, 0.3 - wingY * 0.04, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Thân gà tròn trịa
+            ctx.beginPath();
+            ctx.ellipse(0, 2, 17, 19, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // TRANG BỊ THEO TỪNG LOẠI GÀ CAO CẤP (ELITE CLASSES)
+            if (c.enemyClass === 'cyborg') {
+                // Mũ giáp sắt & Kính hồng ngoại đỏ Cyborg
+                ctx.fillStyle = '#475569';
+                ctx.beginPath();
+                ctx.arc(0, -5, 16, Math.PI, 0);
+                ctx.fill();
+                ctx.fillStyle = '#ef4444';
+                ctx.fillRect(-11, -7, 22, 5);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(2, -6, 6, 2);
+            } else if (c.enemyClass === 'ninja') {
+                // Khăn bịt đầu Ninja & Dải băng đỏ bay phấp phới
+                ctx.fillStyle = '#dc2626';
+                ctx.fillRect(-16, -11, 32, 5);
+                ctx.beginPath();
+                ctx.moveTo(15, -9);
+                ctx.lineTo(26, -14 + Math.sin(game.time * 15) * 4);
+                ctx.lineTo(24, -5 + Math.sin(game.time * 15) * 4);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = '#fde047';
+                ctx.beginPath();
+                ctx.arc(-6, -4, 2.5, 0, Math.PI * 2);
+                ctx.arc(6, -4, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Mào gà đỏ trên đỉnh đầu
+                ctx.fillStyle = c.enemyClass === 'golden' ? '#f59e0b' : '#ef4444';
+                ctx.beginPath();
+                ctx.arc(-4, -18, 4.5, 0, Math.PI * 2);
+                ctx.arc(1, -20, 5.5, 0, Math.PI * 2);
+                ctx.arc(6, -17, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Mắt gà hầm hố
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(-6, -4, 2.6, 0, Math.PI * 2);
+                ctx.arc(6, -4, 2.6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Mỏ gà vàng nhọn
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.moveTo(-4, 0);
+            ctx.lineTo(4, 0);
+            ctx.lineTo(0, 8);
+            ctx.closePath();
+            ctx.fill();
+
+            // Nếu là Gà Cảm Tử Đeo Bom (Bomber Chicken): Đai thuốc nổ nhấp nháy đỏ trước ngực
+            if (c.enemyClass === 'bomber') {
+                ctx.fillStyle = Math.floor(game.time * 12) % 2 === 0 ? '#ef4444' : '#fef08a';
+                ctx.fillRect(-8, 7, 16, 7);
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(-8, 7, 16, 7);
+            }
+
+            // Nếu là Gà Khiên Năng Lượng (Forcefield Chicken) còn khiên
+            if (c.shieldHp && c.shieldHp > 0) {
+                ctx.save();
+                ctx.rotate(game.time * 3);
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.14)';
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash([10, 6]);
+                ctx.beginPath();
+                ctx.arc(0, 0, c.radius + 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            ctx.restore();
+        }
+
+        function drawBoss(ctx, b) {
+            ctx.save();
+            ctx.translate(b.x, b.y);
+
+            // Vẽ Tia Laser của Trùm nếu đang kích hoạt
+            if (b.laserTimer > 0) {
+                const beamWidth = 26 + Math.sin(game.time * 40) * 8;
+                const grad = ctx.createLinearGradient(0, 40, 0, H);
+                grad.addColorStop(0, '#f43f5e');
+                grad.addColorStop(0.5, '#fbbf24');
+                grad.addColorStop(1, 'rgba(244, 63, 94, 0.2)');
+                ctx.fillStyle = grad;
+
+                if (b.bossType === 'ufo') {
+                    // Đĩa bay bắn 2 tia Laser Kép
+                    [-42, 42].forEach(offsetX => {
+                        ctx.fillRect(offsetX - beamWidth / 3, 25, (beamWidth / 3) * 2, H);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(offsetX - 4, 25, 8, H);
+                        ctx.fillStyle = grad;
+                    });
+                } else {
+                    ctx.fillRect(-beamWidth / 2, 40, beamWidth, H);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(-beamWidth / 5, 40, (beamWidth / 5) * 2, H);
+                }
+            }
+
+            // Vẽ 4 Tia Laser Xoay của Trùm Cuối Yolk-Star
+            if (b.crossLaserActive > 0) {
+                for (let arm = 0; arm < 4; arm++) {
+                    ctx.save();
+                    ctx.rotate(b.crossLaserAngle + arm * (Math.PI / 2));
+                    ctx.fillStyle = 'rgba(192, 132, 252, 0.75)';
+                    ctx.fillRect(25, -10, Math.max(W, H), 20);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(25, -3, Math.max(W, H), 6);
+                    ctx.restore();
+                }
+            }
+
+            // TÙY BIẾN HÌNH DÁNG 4 ĐẠI BOSS
+            if (b.bossType === 'yolkstar') {
+                // BOSS 4: TRỨNG VŨ TRỤ HẮC ÁM YOLK-STAR
+                const openOffset = (b.shellOpen || 0) * 22;
+
+                // Lõi Năng Lượng Lòng Đỏ Plasma ở tâm
+                const coreGrad = ctx.createRadialGradient(0, 0, 5, 0, 0, 42);
+                coreGrad.addColorStop(0, '#ffffff');
+                coreGrad.addColorStop(0.4, '#facc15');
+                coreGrad.addColorStop(1, '#ef4444');
+                ctx.fillStyle = coreGrad;
+                ctx.beginPath();
+                ctx.arc(0, 0, 38 + Math.sin(game.time * 12) * 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Nửa vỏ trứng cơ khí trên & dưới tách ra
+                ctx.fillStyle = b.hitFlash > 0 ? '#ffffff' : '#334155';
+                ctx.strokeStyle = b.enraged ? '#f43f5e' : '#c084fc';
+                ctx.lineWidth = 4;
+
+                // Vỏ trên
+                ctx.beginPath();
+                ctx.arc(0, -openOffset, 68, Math.PI, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Vỏ dưới
+                ctx.beginPath();
+                ctx.arc(0, openOffset, 68, 0, Math.PI);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Mắt điện tử trên vỏ
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(-22, -20 - openOffset, 7, 0, Math.PI * 2);
+                ctx.arc(22, -20 - openOffset, 7, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+                return;
+            }
+
+            if (b.bossType === 'mecha') {
+                // BOSS 3: GÀ ROBOT HỦY DIỆT MK-II
+                const wingY = Math.sin(b.wingPhase) * 14;
+
+                // 2 Bệ phóng tên lửa vác vai
+                ctx.fillStyle = '#1e293b';
+                ctx.strokeStyle = '#f97316';
+                ctx.lineWidth = 2.5;
+                ctx.fillRect(-74, -40 + wingY * 0.3, 24, 52);
+                ctx.strokeRect(-74, -40 + wingY * 0.3, 24, 52);
+                ctx.fillRect(50, -40 + wingY * 0.3, 24, 52);
+                ctx.strokeRect(50, -40 + wingY * 0.3, 24, 52);
+
+                // Thân Giáp Thép Robot
+                ctx.fillStyle = b.hitFlash > 0 ? '#ffffff' : (b.enraged ? '#7f1d1d' : '#475569');
+                ctx.strokeStyle = b.enraged ? '#ef4444' : '#38bdf8';
+                ctx.lineWidth = 3.5;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 52, 56, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Kính Visor Laser Đỏ ngang mặt
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(-34, -22, 68, 16);
+                ctx.fillStyle = '#ef4444';
+                ctx.fillRect(-28 + Math.sin(game.time * 8) * 6, -18, 56, 8);
+
+                // Mỏ kim loại răng cưa
+                ctx.fillStyle = '#94a3b8';
+                ctx.beginPath();
+                ctx.moveTo(-14, -2);
+                ctx.lineTo(14, -2);
+                ctx.lineTo(0, 20);
+                ctx.closePath();
+                ctx.fill();
+
+                // Lõi lò phản ứng hồ quang trước ngực
+                ctx.fillStyle = b.enraged ? '#f43f5e' : '#38bdf8';
+                ctx.beginPath();
+                ctx.arc(0, 28, 11 + Math.sin(game.time * 15) * 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+                return;
+            }
+
+            // BOSS 1 (KING CHICKEN) & BOSS 2 (MOTHER-HEN UFO)
+            const wingY = Math.sin(b.wingPhase) * 18;
+
+            // Cánh khổng lồ
+            ctx.fillStyle = b.hitFlash > 0 ? '#ffffff' : '#fbbf24';
+            ctx.strokeStyle = '#b45309';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.ellipse(-58, wingY * 0.4, 30, 16, -0.25, 0, Math.PI * 2);
+            ctx.ellipse(58, wingY * 0.4, 30, 16, 0.25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Nếu là Boss Đĩa Bay UFO
+            if (b.bossType === 'ufo') {
+                ctx.fillStyle = '#334155';
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.ellipse(0, 22, 78, 24, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            // Thân Gà Chúa
+            ctx.fillStyle = b.hitFlash > 0 ? '#ffffff' : '#fef08a';
+            ctx.strokeStyle = '#d97706';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 50, 54, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Vương miện / Mào Vua Gà
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.moveTo(-22, -48);
+            ctx.lineTo(-14, -72);
+            ctx.lineTo(-4, -55);
+            ctx.lineTo(0, -76);
+            ctx.lineTo(6, -55);
+            ctx.lineTo(16, -72);
+            ctx.lineTo(22, -48);
+            ctx.closePath();
+            ctx.fill();
+
+            // Mắt dữ tợn
+            ctx.fillStyle = '#dc2626';
+            ctx.beginPath();
+            ctx.arc(-16, -12, 7, 0, Math.PI * 2);
+            ctx.arc(16, -12, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Mỏ lớn
+            ctx.fillStyle = '#ea580c';
+            ctx.beginPath();
+            ctx.moveTo(-12, -2);
+            ctx.lineTo(12, -2);
+            ctx.lineTo(0, 18);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function render() {
+            ctx.save();
+            if (game.screenShake > 0) {
+                const dx = (Math.random() - 0.5) * game.screenShake;
+                const dy = (Math.random() - 0.5) * game.screenShake;
+                ctx.translate(dx, dy);
+            }
+
+            // Nền vũ trụ sâu thẳm
+            ctx.fillStyle = '#030712';
+            ctx.fillRect(0, 0, W, H);
+
+            // Vẽ các lớp sao trôi
+            for (const s of stars) {
+                ctx.globalAlpha = s.alpha;
+                ctx.fillStyle = s.color;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // Vẽ Chướng ngại vật môi trường (Bão Điện Từ Solar Flare & Cổng Không Gian)
+            for (const hz of hazards) {
+                if (hz.type === 'portal') {
+                    ctx.save();
+                    ctx.translate(hz.x, hz.y);
+                    ctx.rotate(hz.rot);
+                    ctx.strokeStyle = hz.color;
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([12, 8]);
+                    ctx.beginPath();
+                    ctx.arc(0, 0, hz.radius, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    ctx.fillStyle = 'rgba(168, 85, 247, 0.2)';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, hz.radius * 0.7, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                } else if (hz.type === 'solar_flare') {
+                    if (hz.state === 'warning') {
+                        ctx.save();
+                        ctx.strokeStyle = 'rgba(244, 63, 94, 0.65)';
+                        ctx.fillStyle = 'rgba(244, 63, 94, 0.12)';
+                        ctx.setLineDash([10, 10]);
+                        ctx.lineWidth = 2;
+                        ctx.fillRect(hz.x - hz.width / 2, 0, hz.width, H);
+                        ctx.strokeRect(hz.x - hz.width / 2, 0, hz.width, H);
+
+                        ctx.fillStyle = '#fb7185';
+                        ctx.font = '800 13px Orbitron, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('⚠️ BÃO TỪ!', hz.x, 95);
+                        ctx.restore();
+                    } else if (hz.state === 'active') {
+                        ctx.save();
+                        const g = ctx.createLinearGradient(hz.x - hz.width / 2, 0, hz.x + hz.width / 2, 0);
+                        g.addColorStop(0, 'rgba(249, 115, 22, 0)');
+                        g.addColorStop(0.5, 'rgba(254, 240, 138, 0.95)');
+                        g.addColorStop(1, 'rgba(249, 115, 22, 0)');
+                        ctx.fillStyle = g;
+                        ctx.fillRect(hz.x - hz.width / 2, 0, hz.width, H);
+                        ctx.restore();
+                    }
+                }
+            }
+
+            // Vẽ Vật phẩm rơi (Đùi Gà, Hộp Quà, Tia Chớp)
+            for (const p of powerups) {
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.rot);
+
+                if (p.type === 'drumstick') {
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.fillRect(-10, -2, 8, 4);
+                    ctx.beginPath();
+                    ctx.arc(-10, -3, 3, 0, Math.PI * 2);
+                    ctx.arc(-10, 3, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#d97706';
+                    ctx.beginPath();
+                    ctx.ellipse(3, 0, 9, 6.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (p.type === 'gift') {
+                    const boxColor = WEAPON_NAMES[p.weaponType].color;
+                    ctx.fillStyle = boxColor;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.fillRect(-12, -12, 24, 24);
+                    ctx.strokeRect(-12, -12, 24, 24);
+                    ctx.fillStyle = '#fef08a';
+                    ctx.fillRect(-3, -12, 6, 24);
+                    ctx.fillRect(-12, -3, 24, 6);
+                } else if (p.type === 'lightning') {
+                    ctx.fillStyle = '#fde047';
+                    ctx.shadowColor = '#facc15';
+                    ctx.shadowBlur = 12;
+                    ctx.beginPath();
+                    ctx.moveTo(3, -14);
+                    ctx.lineTo(-9, 2);
+                    ctx.lineTo(-1, 2);
+                    ctx.lineTo(-4, 14);
+                    ctx.lineTo(9, -2);
+                    ctx.lineTo(1, -2);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            // Vẽ Đạn Địch (Trứng, Laser Đỏ, Phi Tiêu Shuriken, Tên Lửa Tầm Nhiệt, Cầu Plasma)
+            for (const e of eggs) {
+                ctx.save();
+                ctx.translate(e.x, e.y);
+                if (e.projType === 'shuriken') {
+                    ctx.rotate(e.rot);
+                    ctx.fillStyle = '#e2e8f0';
+                    ctx.strokeStyle = '#38bdf8';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    for (let k = 0; k < 4; k++) {
+                        const ang = k * (Math.PI / 2);
+                        ctx.lineTo(Math.cos(ang) * 11, Math.sin(ang) * 11);
+                        ctx.lineTo(Math.cos(ang + 0.4) * 4, Math.sin(ang + 0.4) * 4);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (e.projType === 'laser') {
+                    ctx.rotate(Math.atan2(e.vy, e.vx) - Math.PI / 2);
+                    ctx.fillStyle = '#f43f5e';
+                    ctx.shadowColor = '#fb7185';
+                    ctx.shadowBlur = 8;
+                    ctx.fillRect(-3, -10, 6, 20);
+                } else if (e.projType === 'homing_missile') {
+                    ctx.rotate(Math.atan2(e.vy, e.vx) + Math.PI / 2);
+                    ctx.fillStyle = '#ef4444';
+                    ctx.strokeStyle = '#fde047';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -12);
+                    ctx.lineTo(7, 8);
+                    ctx.lineTo(-7, 8);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (e.projType === 'plasma_orb') {
+                    ctx.fillStyle = '#c084fc';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, e.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, e.radius * 0.45, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = '#fef3c7';
+                    ctx.strokeStyle = '#f59e0b';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 6.5, 8.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            // Vẽ Thiên thạch (Thường & Magma Lửa)
+            for (const a of asteroids) {
+                ctx.save();
+                ctx.translate(a.x, a.y);
+                ctx.rotate(a.rot);
+                ctx.fillStyle = a.isMagma ? '#7c2d12' : '#475569';
+                ctx.strokeStyle = a.isMagma ? '#f97316' : '#94a3b8';
+                ctx.lineWidth = a.isMagma ? 3 : 2;
+                ctx.beginPath();
+                a.vertices.forEach((v, idx) => {
+                    if (idx === 0) ctx.moveTo(v.x, v.y);
+                    else ctx.lineTo(v.x, v.y);
+                });
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // Vẽ Gà
+            for (const c of chickens) {
+                drawChicken(ctx, c);
+            }
+
+            // Vẽ Trùm
+            if (boss) {
+                drawBoss(ctx, boss);
+            }
+
+            // Vẽ Đạn theo 3 hệ đặc trưng
+            for (const b of bullets) {
+                ctx.save();
+                ctx.translate(b.x, b.y);
+                if (b.type === 0) {
+                    // Đạn Đỏ Ion
+                    ctx.fillStyle = '#ef4444';
+                    ctx.shadowColor = '#f87171';
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, b.radius * 0.8, b.radius * 1.9, Math.atan2(b.vx, -b.vy), 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (b.type === 1) {
+                    // Laser Vàng tốc độ cao
+                    ctx.strokeStyle = '#fef08a';
+                    ctx.lineWidth = b.radius * 1.1;
+                    ctx.shadowColor = '#facc15';
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -12);
+                    ctx.lineTo(0, 12);
+                    ctx.stroke();
+                } else {
+                    // Cầu Plasma Tím giật điện
+                    ctx.fillStyle = '#c084fc';
+                    ctx.shadowColor = '#a855f7';
+                    ctx.shadowBlur = 12;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, b.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, b.radius * 0.45, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            // Vẽ Tên Lửa Hủy Diệt đang bay vào giữa màn hình
+            if (activeMissile) {
+                ctx.save();
+                ctx.translate(activeMissile.x, activeMissile.y);
+                ctx.fillStyle = '#f43f5e';
+                ctx.beginPath();
+                ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // Vẽ Phi thuyền người chơi
+            if (game.state === 'PLAYING' || game.state === 'PAUSED') {
+                drawPlayerShip(ctx, player.x, player.y);
+            }
+
+            // Vẽ Hiệu ứng Hạt (Lông gà & Tia lửa)
+            for (const pt of particles) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
+                ctx.translate(pt.x, pt.y);
+                if (pt.type === 'feather') {
+                    ctx.rotate(pt.rot);
+                    ctx.fillStyle = pt.color;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, pt.size, pt.size * 0.38, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = pt.color;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, pt.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            // Vẽ Chữ nổi trên màn hình
+            for (const ft of floatingTexts) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, ft.life);
+                ctx.font = '800 15px Orbitron, sans-serif';
+                ctx.fillStyle = ft.color;
+                ctx.textAlign = 'center';
+                ctx.fillText(ft.text, ft.x, ft.y);
+                ctx.restore();
+            }
+
+            // Thông báo Màn chơi (Wave Banner)
+            if (game.bannerTimer > 0 && game.state === 'PLAYING') {
+                ctx.save();
+                ctx.globalAlpha = Math.min(1, game.bannerTimer);
+                ctx.textAlign = 'center';
+                ctx.font = '900 28px Orbitron, sans-serif';
+                ctx.fillStyle = '#fbbf24';
+                ctx.fillText(game.waveTitle, W / 2, H * 0.36);
+
+                ctx.font = '700 16px Quicksand, sans-serif';
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillText(game.waveSubTitle, W / 2, H * 0.36 + 32);
+                ctx.restore();
+            }
+
+            // Chớp sáng toàn màn hình khi nổ Tên Lửa
+            if (game.flashAlpha > 0) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${game.flashAlpha})`;
+                ctx.fillRect(0, 0, W, H);
+            }
+
+            ctx.restore();
+        }
+
+        /* ============================================================================
+         * 9. QUẢN LÝ GIAO DIỆN HUD & ĐIỀU KHIỂN MÀN HÌNH
+         * ============================================================================ */
+        function updateHUD() {
+            document.getElementById('waveHudDisplay').textContent = `MÀN ${game.wave}`;
+            document.getElementById('scoreDisplay').textContent = game.score.toLocaleString('vi-VN');
+            document.getElementById('livesDisplay').textContent = '❤️'.repeat(Math.max(0, player.lives));
+
+            const wInfo = WEAPON_NAMES[player.weaponType];
+            const wEl = document.getElementById('weaponDisplay');
+            wEl.textContent = `${wInfo.name} CẤP ${player.weaponLevel}${player.weaponLevel >= 8 ? ' +DRONE' : ''}`;
+            wEl.style.color = wInfo.color;
+
+            document.getElementById('drumstickDisplay').textContent = player.drumsticks;
+            document.getElementById('missileDisplay').textContent = player.missiles;
+            document.getElementById('touchMissileCount').textContent = player.missiles;
+        }
+
+        function updateBossHUD() {
+            if (!boss) return;
+            const pct = Math.max(0, Math.round((boss.hp / boss.maxHp) * 100));
+            document.getElementById('bossHpBar').style.width = `${pct}%`;
+            document.getElementById('bossHpPercent').textContent = `${pct}%`;
+        }
+
+        function startNewGame(customStartWave = null) {
+            sfx.init();
+            const selectedWave = customStartWave || parseInt(document.getElementById('startWaveSelect').value || '1', 10);
+
+            game.score = 0;
+            game.wave = selectedWave;
+            game.state = 'PLAYING';
+
+            player.x = W / 2;
+            player.y = H - 100;
+            player.targetX = player.x;
+            player.targetY = player.y;
+            player.lives = 3;
+            player.weaponType = 0;
+            // Nếu người chơi chọn màn cao cấp (Màn 6 trở lên), tặng sẵn vũ khí cấp cao & Drone hộ vệ
+            player.weaponLevel = selectedWave >= 20 ? 12 : (selectedWave >= 15 ? 11 : (selectedWave >= 10 ? 9 : (selectedWave >= 6 ? 8 : 1)));
+            player.drumsticks = 0;
+            player.missiles = selectedWave >= 6 ? 4 : 3;
+            player.heat = 0;
+            player.overheated = false;
+            player.invulnerableTimer = 2.5;
+
+            bullets = [];
+            eggs = [];
+            powerups = [];
+            particles = [];
+            floatingTexts = [];
+            activeMissile = null;
+
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('pauseScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('btnMissileTouch').classList.remove('hidden');
+
+            startWave(selectedWave);
+            updateHUD();
+        }
+
+        function togglePause() {
+            if (game.state === 'PLAYING') {
+                game.state = 'PAUSED';
+                document.getElementById('pauseScreen').classList.remove('hidden');
+            } else if (game.state === 'PAUSED') {
+                game.state = 'PLAYING';
+                document.getElementById('pauseScreen').classList.add('hidden');
+            }
+        }
+
+        function triggerGameOver() {
+            game.state = 'GAMEOVER';
+            if (game.score > game.highScore) {
+                game.highScore = game.score;
+                localStorage.setItem('chicken_invaders_highscore', String(game.highScore));
+            }
+            document.getElementById('finalWave').textContent = `Màn ${game.wave}`;
+            document.getElementById('finalScore').textContent = game.score.toLocaleString('vi-VN');
+            document.getElementById('finalHighScore').textContent = game.highScore.toLocaleString('vi-VN');
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+            document.getElementById('btnMissileTouch').classList.add('hidden');
+        }
+
+        // Gắn sự kiện các nút bấm UI
+        document.getElementById('highScoreStart').textContent = game.highScore.toLocaleString('vi-VN');
+        document.getElementById('btnStartGame').addEventListener('click', () => startNewGame());
+        document.getElementById('btnPlayAgain').addEventListener('click', () => startNewGame(game.wave >= 6 ? 6 : 1));
+        document.getElementById('btnRestartPause').addEventListener('click', () => startNewGame(1));
+        document.getElementById('btnResume').addEventListener('click', togglePause);
+        document.getElementById('btnPause').addEventListener('click', togglePause);
+        document.getElementById('btnMissileTouch').addEventListener('click', launchMissile);
+
+        // Chọn nhảy màn trực tiếp ngay trên thanh HUD khi đang chơi
+        document.getElementById('hudWaveJump').addEventListener('change', (e) => {
+            const targetW = parseInt(e.target.value, 10);
+            if (!isNaN(targetW) && game.state === 'PLAYING') {
+                if (targetW >= 6 && player.weaponLevel < 8) {
+                    player.weaponLevel = Math.min(12, Math.max(8, Math.floor(targetW / 2) + 3));
+                }
+                eggs = [];
+                bullets = [];
+                startWave(targetW);
+                addFloatingText(`⚡ NHẢY TỚI MÀN ${targetW}!`, player.x, player.y - 40, '#c084fc');
+            }
+            e.target.value = '';
+            e.target.blur();
+        });
+
+        document.getElementById('btnAutoFire').addEventListener('click', () => {
+            game.autoFire = !game.autoFire;
+            const status = document.getElementById('autoFireStatus');
+            status.textContent = game.autoFire ? 'BẬT' : 'TẮT';
+            document.getElementById('btnAutoFire').className = game.autoFire
+                ? 'glass-panel px-2.5 py-1.5 rounded-xl text-xs font-bold border border-emerald-500/40 text-emerald-300 hover:bg-slate-800/80 transition flex items-center gap-1'
+                : 'glass-panel px-2.5 py-1.5 rounded-xl text-xs font-bold border border-slate-600 text-slate-400 hover:bg-slate-800/80 transition flex items-center gap-1';
+        });
+
+        document.getElementById('btnSound').addEventListener('click', () => {
+            sfx.init();
+            const on = sfx.toggle();
+            document.getElementById('btnSound').textContent = on ? '🔊 Âm Thanh' : '🔇 Tắt Tiếng';
+        });
+
+        /* ============================================================================
+         * 10. VÒNG LẶP CHÍNH CỦA GAME (60FPS GAME LOOP)
+         * ============================================================================ */
+        let lastTime = performance.now();
+        function gameLoop(now) {
+            const dt = Math.min(0.05, (now - lastTime) / 1000);
+            lastTime = now;
+
+            update(dt);
+            render();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = function () {
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
